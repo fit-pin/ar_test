@@ -1,0 +1,8 @@
+{
+    "recommendations": [
+        "donjayamanne.python-extension-pack",
+        "ms-python.autopep8",
+        "ms-python.isort",
+        "ms-toolsai.jupyter"
+    ]
+}
