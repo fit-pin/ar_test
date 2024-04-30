@@ -56,11 +56,16 @@ def pose(frame: cv.typing.MatLike):
 
         idFrom = BODY_PARTS[partFrom]
         idTo = BODY_PARTS[partTo]
+        
+        cv.ellipse(frame, points[0], (3, 3), 0, 0, 360, (0, 0, 255), cv.FILLED)
+        cv.ellipse(frame, points[1], (3, 3), 0, 0, 360, (0, 0, 255), cv.FILLED)
+        print(points[0], points[1])
+        print(cv.norm(points[0], point[1]))
 
-        if points[idFrom] and points[idTo]:
-            cv.line(frame, points[idFrom], points[idTo], (0, 255, 0), 3)
-            cv.ellipse(frame, points[idFrom], (3, 3), 0, 0, 360, (0, 0, 255), cv.FILLED)
-            cv.ellipse(frame, points[idTo], (3, 3), 0, 0, 360, (0, 0, 255), cv.FILLED)
+        # if points[idFrom] and points[idTo]:
+        #     cv.line(frame, points[idFrom], points[idTo], (255, 0, 0), 3)
+        #     cv.ellipse(frame, points[idFrom], (3, 3), 0, 0, 360, (0, 0, 255), cv.FILLED)
+        #     cv.ellipse(frame, points[idTo], (3, 3), 0, 0, 360, (0, 0, 255), cv.FILLED)
 
     t, _ = net.getPerfProfile()
     freq = cv.getTickFrequency() / 1000
@@ -71,3 +76,5 @@ est = pose(img)
 
 cv.cvtColor(img, cv.COLOR_BGR2RGB)
 cv.imwrite("result.jpg", img)
+plt.imshow(img)
+plt.show()
