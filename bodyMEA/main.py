@@ -3,6 +3,7 @@ from os import PathLike
 import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
+import math
 
 net = cv.dnn.readNetFromTensorflow("./graph_opt.pb")
 
@@ -22,6 +23,12 @@ POSE_PAIRS = [["Neck", "RShoulder"], ["Neck", "LShoulder"], ["RShoulder", "RElbo
               ["REye", "REar"], ["Nose", "LEye"], ["LEye", "LEar"]]
 
 img = cv.imread("./test.jpg")
+
+def distance(point1: tuple, point2: tuple):
+    x1, y1 = point1
+    x2, y2 = point2
+    distance = math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+    return distance
 
 def pose(frame: cv.typing.MatLike):
     frameWidth = frame.shape[1]
@@ -59,8 +66,7 @@ def pose(frame: cv.typing.MatLike):
         
         cv.ellipse(frame, points[0], (3, 3), 0, 0, 360, (0, 0, 255), cv.FILLED)
         cv.ellipse(frame, points[1], (3, 3), 0, 0, 360, (0, 0, 255), cv.FILLED)
-        print(points[0], points[1])
-        print(cv.norm(points[0], point[1]))
+        print(distance(points[0], points[1]))
 
         # if points[idFrom] and points[idTo]:
         #     cv.line(frame, points[idFrom], points[idTo], (255, 0, 0), 3)
