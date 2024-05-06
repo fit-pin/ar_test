@@ -1,36 +1,53 @@
-import datetime
 import cv2
 from ultralytics import YOLO
-from ultralytics.engine.results import Results
-from deep_sort_realtime.deepsort_tracker import DeepSort
 from ultralytics.utils.plotting import Annotator
 import matplotlib.pyplot as plt
 
 model = YOLO('yolov8n.pt')
-img = cv2.imread("bodyMEA/test.jpg")
+img = cv2.imread("bodyMEA/test4.jpg")
 
 results = model.predict(img)
 
-for r in results:
-    annotator = Annotator(img)
+annotator = Annotator(img)
 
-    boxes = r.boxes
-    for box in boxes:
-        b = box.xyxy[0]
-        print(box.cls)
-        
-        adjusted_box = [
-            b[0],  # left
-            b[1] + 10,  # top
-            b[2],  # right
-            b[3] - 10   # bottom
-        ]
-        
-        heght = adjusted_box[3] - adjusted_box[1]
-        
-        annotator.box_label(adjusted_box)
-        
-cv2.line(img, (10, 10), (10, int(heght.numpy())), (255, 0, 0))
+findObject = {}
+
+boxes = results[0].boxes
+for box in boxes:
+    b = box.xyxy[0]
+    # print(box.cls)
+
+    adjusted_box = [
+        b[0],  # 왼쪽
+        b[1],  # 위
+        b[2],  # 오른쪽
+        b[3]   # 아래
+    ]
+
+    findObject.update({
+        model.names[int(box.cls)]: adjusted_box
+    })
+
+    annotator.box_label(adjusted_box, model.names[int(box.cls)], (0, 255, 0), (0, 0, 0))
+
+# 책 이미지 높이
+bookHight = findObject["book"][3] - findObject["book"][1]
+
+# 사람 높이
+personHight = findObject["person"][3] - findObject["person"][1]
+
+print(bookHight)
+print(personHight)
+
+# 기준 사물 높이 가지고 다른 사이즈 예측
+def findRealSize(refSize: int, refPx, findPx):
+    cm_per_px = refSize / refPx
+    return round(findPx * cm_per_px)
+
+
+findReal = findRealSize(174, float(personHight), float(bookHight))
+
+print(f"실제 사이즈: {findReal}cm")
+
 plt.imshow(img)
-print(heght)
 plt.show()
