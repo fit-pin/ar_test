@@ -4,8 +4,9 @@ import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
 import math
+from Yolo import resYolo
 
-net = cv.dnn.readNetFromTensorflow("./graph_opt.pb")
+net = cv.dnn.readNetFromTensorflow("model/graph_opt.pb")
 
 inWidth = 368
 inHeight = 368
@@ -22,13 +23,15 @@ POSE_PAIRS = [["Neck", "RShoulder"], ["Neck", "LShoulder"], ["RShoulder", "RElbo
               ["LHip", "LKnee"], ["LKnee", "LAnkle"], ["Neck", "Nose"], ["Nose", "REye"],
               ["REye", "REar"], ["Nose", "LEye"], ["LEye", "LEar"]]
 
-img = cv.imread("./test.jpg")
+img = cv.imread("bodyMEA/test.jpg")
+
 
 def distance(point1: tuple, point2: tuple):
     x1, y1 = point1
     x2, y2 = point2
     distance = math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
     return distance
+
 
 def pose(frame: cv.typing.MatLike):
     frameWidth = frame.shape[1]
@@ -41,6 +44,7 @@ def pose(frame: cv.typing.MatLike):
     assert (len(BODY_PARTS) <= out.shape[1])
 
     points = []
+    arm = []
     for i in range(len(BODY_PARTS)):
         # Slice heatmap of corresponding body's part.
         heatMap = out[0, i, :, :]
@@ -53,34 +57,46 @@ def pose(frame: cv.typing.MatLike):
         y = (frameHeight * point[1]) / out.shape[2]
 
         # Add a point if it's confidence is higher than threshold.
+
         points.append((int(x), int(y)) if conf > thr else None)
+        count = 0
+        if (BODY_PARTS["RShoulder"] == i):
+            arm.append([x, y])
+        if (BODY_PARTS["RElbow"] == i):
+            arm.append([x, y])
+        if (BODY_PARTS["RWrist"] == i):
+            arm.append([x, y])
 
-    for pair in POSE_PAIRS:
-        partFrom = pair[0]
-        partTo = pair[1]
-        assert (partFrom in BODY_PARTS)
-        assert (partTo in BODY_PARTS)
+    print(arm)
+    # for pair in POSE_PAIRS:
+    #     partFrom = pair[0]
+    #     partTo = pair[1]
+    #     assert (partFrom in BODY_PARTS)
+    #     assert (partTo in BODY_PARTS)
 
-        idFrom = BODY_PARTS[partFrom]
-        idTo = BODY_PARTS[partTo]
-        
-        cv.ellipse(frame, points[0], (3, 3), 0, 0, 360, (0, 0, 255), cv.FILLED)
-        cv.ellipse(frame, points[1], (3, 3), 0, 0, 360, (0, 0, 255), cv.FILLED)
-        print(distance(points[0], points[1]))
+    #     idFrom = BODY_PARTS[partFrom]
+    #     idTo = BODY_PARTS[partTo]
 
-        # if points[idFrom] and points[idTo]:
-        #     cv.line(frame, points[idFrom], points[idTo], (255, 0, 0), 3)
-        #     cv.ellipse(frame, points[idFrom], (3, 3), 0, 0, 360, (0, 0, 255), cv.FILLED)
-        #     cv.ellipse(frame, points[idTo], (3, 3), 0, 0, 360, (0, 0, 255), cv.FILLED)
+    #     cv.ellipse(frame, points[0], (3, 3), 0, 0, 360, (0, 0, 255), cv.FILLED)
+    #     cv.ellipse(frame, points[1], (3, 3), 0, 0, 360, (0, 0, 255), cv.FILLED)
+    #     print(distance(points[0], points[1]))
+
+    #     if points[idFrom] and points[idTo]:
+    #         cv.line(frame, points[idFrom], points[idTo], (255, 0, 0), 3)
+    #         cv.ellipse(frame, points[idFrom], (3, 3), 0, 0, 360, (0, 0, 255), cv.FILLED)
+    #         cv.ellipse(frame, points[idTo], (3, 3), 0, 0, 360, (0, 0, 255), cv.FILLED)
 
     t, _ = net.getPerfProfile()
     freq = cv.getTickFrequency() / 1000
     cv.putText(frame, '%.2fms' % (t / freq), (10, 20), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0))
     return frame
 
+
 est = pose(img)
 
-cv.cvtColor(img, cv.COLOR_BGR2RGB)
-cv.imwrite("result.jpg", img)
-plt.imshow(img)
+img = resYolo(img)
+
+cv.cvtColor(est, cv.COLOR_BGR2RGB)
+cv.imwrite("bodyMEA/result.jpg", est)
+plt.imshow(est)
 plt.show()
