@@ -38,7 +38,7 @@ def resYolo(img):
     # print(personHight)
     
 
-    # 기준 사물 높이 가지고 다른 사이즈 예측
+# 기준 사물 높이 가지고 다른 사이즈 예측
 def __findRealSize(refSize: int, refPx, findPx):
     cm_per_px = refSize / refPx
     return round(findPx * cm_per_px)

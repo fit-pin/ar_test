@@ -4,99 +4,70 @@ import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
 import math
+
+from ultralytics import YOLO
+from ultralytics.engine.results import Results
 from Yolo import resYolo
 
-net = cv.dnn.readNetFromTensorflow("model/graph_opt.pb")
+BODY_PARTS = {"코": 0, "오른쪽 눈": 1, "왼쪽 눈": 2, "오른쪽 귀": 3, "왼쪽 귀": 4,
+              "오른쪽 어깨": 5, "왼쪽 어깨": 6, "오론쪽 팔꿈치": 7, "왼쪽 팔꿈치": 8, "오른쪽 손목": 9,
+              "왼쪽 손목": 10, "오른쪽 골반": 11, "왼쪽 골반": 12, "오른쪽 무릎": 13, "왼쪽 무릎": 14,
+              "오른쪽 발": 15, "왼쪽 발": 16}
 
-inWidth = 368
-inHeight = 368
-thr = 0.2
-
-BODY_PARTS = {"Nose": 0, "Neck": 1, "RShoulder": 2, "RElbow": 3, "RWrist": 4,
-              "LShoulder": 5, "LElbow": 6, "LWrist": 7, "RHip": 8, "RKnee": 9,
-              "RAnkle": 10, "LHip": 11, "LKnee": 12, "LAnkle": 13, "REye": 14,
-              "LEye": 15, "REar": 16, "LEar": 17, "Background": 18}
-
-POSE_PAIRS = [["Neck", "RShoulder"], ["Neck", "LShoulder"], ["RShoulder", "RElbow"],
-              ["RElbow", "RWrist"], ["LShoulder", "LElbow"], ["LElbow", "LWrist"],
-              ["Neck", "RHip"], ["RHip", "RKnee"], ["RKnee", "RAnkle"], ["Neck", "LHip"],
-              ["LHip", "LKnee"], ["LKnee", "LAnkle"], ["Neck", "Nose"], ["Nose", "REye"],
-              ["REye", "REar"], ["Nose", "LEye"], ["LEye", "LEar"]]
-
-img = cv.imread("bodyMEA/test.jpg")
-
-
-def distance(point1: tuple, point2: tuple):
-    x1, y1 = point1
-    x2, y2 = point2
-    distance = math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+# 점들간의 길이 구하는 함수
+def distance(points: list[tuple[float]]):
+    distance = 0
+    for i in range(len(points) - 1):
+        x1, y1 = points[i]
+        x2, y2 = points[i+1]
+        distance += math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
     return distance
 
 
-def pose(frame: cv.typing.MatLike):
-    frameWidth = frame.shape[1]
-    frameHeight = frame.shape[0]
-    inp = cv.dnn.blobFromImage(frame, 1.0, (inWidth, inHeight),
-                               (0, 0, 0), swapRB=False, crop=False)
-    net.setInput(inp)
-    out = net.forward()
+def personArea(modelResult: Results, index):
+    print(modelResult.boxes)
+    pass
 
-    assert (len(BODY_PARTS) <= out.shape[1])
+# 포즈 구하는
+def pose(img: cv.typing.MatLike, modelSrc: str):
+    model = YOLO(modelSrc)
+    resultList: list[Results] = model.predict(img)
+    
+    result = None
+    for res in resultList:
+        if res.names[0]:
+            result = res
+            break
+            
+    # 여러 사람 감지 될 시 한사람만 되게    
+    person1Pose = result.keypoints.xy[0]
 
-    points = []
-    arm = []
-    for i in range(len(BODY_PARTS)):
-        # Slice heatmap of corresponding body's part.
-        heatMap = out[0, i, :, :]
+    # 대충 길이 테스트해 볼꺼
+    lenTest = [
+        person1Pose[BODY_PARTS["왼쪽 어깨"]],
+        person1Pose[BODY_PARTS["왼쪽 팔꿈치"]],
+        person1Pose[BODY_PARTS["왼쪽 손목"]]
+    ]
 
-        # Originally, we try to find all the local maximums. To simplify a sample
-        # we just find a global one. However only a single pose at the same time
-        # could be detected this way.
-        _, conf, _, point = cv.minMaxLoc(heatMap)
-        x = (frameWidth * point[0]) / out.shape[3]
-        y = (frameHeight * point[1]) / out.shape[2]
+    # 점과 점사이 거리 px
+    dist = distance(lenTest)
+    # personArea(result)
 
-        # Add a point if it's confidence is higher than threshold.
+    point1 = lenTest[0]
+    point2 = lenTest[1]
+    point3 = lenTest[2]
 
-        points.append((int(x), int(y)) if conf > thr else None)
-        count = 0
-        if (BODY_PARTS["RShoulder"] == i):
-            arm.append([x, y])
-        if (BODY_PARTS["RElbow"] == i):
-            arm.append([x, y])
-        if (BODY_PARTS["RWrist"] == i):
-            arm.append([x, y])
+    # 시각화
+    cv.ellipse(img, (int(point1[0]), int(point1[1])), (8, 8), 0, 0, 360, (0, 0, 255), cv.FILLED)
+    cv.ellipse(img, (int(point2[0]), int(point2[1])), (8, 8), 0, 0, 360, (0, 0, 255), cv.FILLED)
+    cv.ellipse(img, (int(point3[0]), int(point3[1])), (8, 8), 0, 0, 360, (0, 0, 255), cv.FILLED)
 
-    print(arm)
-    # for pair in POSE_PAIRS:
-    #     partFrom = pair[0]
-    #     partTo = pair[1]
-    #     assert (partFrom in BODY_PARTS)
-    #     assert (partTo in BODY_PARTS)
+    return img
 
-    #     idFrom = BODY_PARTS[partFrom]
-    #     idTo = BODY_PARTS[partTo]
+img = cv.imread("bodyMEA/test.jpg")
+res = pose(img, "model/yolov8n-pose.pt")
 
-    #     cv.ellipse(frame, points[0], (3, 3), 0, 0, 360, (0, 0, 255), cv.FILLED)
-    #     cv.ellipse(frame, points[1], (3, 3), 0, 0, 360, (0, 0, 255), cv.FILLED)
-    #     print(distance(points[0], points[1]))
-
-    #     if points[idFrom] and points[idTo]:
-    #         cv.line(frame, points[idFrom], points[idTo], (255, 0, 0), 3)
-    #         cv.ellipse(frame, points[idFrom], (3, 3), 0, 0, 360, (0, 0, 255), cv.FILLED)
-    #         cv.ellipse(frame, points[idTo], (3, 3), 0, 0, 360, (0, 0, 255), cv.FILLED)
-
-    t, _ = net.getPerfProfile()
-    freq = cv.getTickFrequency() / 1000
-    cv.putText(frame, '%.2fms' % (t / freq), (10, 20), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0))
-    return frame
-
-
-est = pose(img)
-
-img = resYolo(img)
-
-cv.cvtColor(est, cv.COLOR_BGR2RGB)
-cv.imwrite("bodyMEA/result.jpg", est)
-plt.imshow(est)
+colorImg = cv.cvtColor(res, cv.COLOR_BGR2RGB)
+# cv.imwrite("bodyMEA/result.jpg", colorImg)
+plt.imshow(colorImg)
 plt.show()
