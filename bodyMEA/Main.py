@@ -124,9 +124,9 @@ def pose(img: cv.typing.MatLike, modelSrc: str):
     bodySize = round(resultFunc(result, body), 2)
     armSize = round(resultFunc(result, arm), 2)
 
+    print(f"팔 길이: {armSize}cm")
     print(f"어께너비: {shoulderSize}cm")
     print(f"상체너비: {bodySize}cm")
-    print(f"팔 길이: {armSize}cm")
 
     # 시각화
     for name in PARES_TOP.keys():
