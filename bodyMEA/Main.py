@@ -21,10 +21,16 @@ PARES_TOP = {"팔 길이": ["왼쪽 어깨", "왼쪽 팔꿈치", "왼쪽 손목"
 PARES_BOTTOM = {"다리 길이": ["왼쪽 골반", "왼쪽 무릎", "왼쪽 발"]}
 
 # 길이 알고리즘 설정
-REASLT_MODE: Literal["눈 사이", "키"]  = "키"
+REASLT_MODE: Literal["눈 사이", "키"] = "키"
 
 # 테스트 이미지
 img = cv.imread("bodyMEA/test.jpg")
+
+# reWidth 값 기준으로 사이즈 줄이기
+def reSize(img: cv.typing.MatLike, reWidth: int):
+    height, width = img.shape[:2]
+    reHeight = int(height * reWidth / width)
+    return cv.resize(img, (reWidth, reHeight), interpolation=cv.INTER_AREA)
 
 # 점들간의 길이 구하는 함수
 def distance(points: list[tuple[float]]):
@@ -63,27 +69,33 @@ def heightToPoint(modelResult: Results, testDist: list[Tensor]):
     dist = distance(testDist)
 
     # 실제 길이 구하기
-    realSize = findRealSize(MY_KEY, personPx, dist)    
-    return realSize
+    return findRealSize(MY_KEY, personPx, dist)
 
 # 평균 눈 사이 거리로 측정하는 함수
 def eyeToPoint(modelResult: Results, testDist: list[Tensor]):
     # 성인 평균 눈 사이 거리
-    EYE_TO_DIST = 7.5
-
+    EYE_TO_DIST = 6.2
+    
     # 한 사람만 선택
-    person = modelResult.boxes[0].xywh[0]
+    person1Pose = modelResult.keypoints.xy[0]
 
-    # 픽셀상 사람 길이
-    personPx = int(person[3])
-
+    leftEye =  person1Pose[BODY_PARTS["왼쪽 눈"]] 
+    rightEye = person1Pose[BODY_PARTS["오른쪽 눈"]]
+        
     # 눈 사이 픽셀상의 거리
-    eyePx = distance(testDist)
+    eyePx = distance([leftEye, rightEye])
+    
+    # 구하려는 사이 픽셀 길이
+    dist = distance(testDist)
+    
+    # 혹시 모르니 사람 키도 구해보는 코드
+    person = modelResult.boxes[0].xywh[0]
+    personPx = int(person[3])
+    realHight = findRealSize(EYE_TO_DIST, eyePx, personPx)
+    print(f"예측한 사람 키: {round(realHight, 2)}cm")
 
     # 실제 길이 구하기
-    realSize = findRealSize(EYE_TO_DIST, eyePx, personPx)
-
-    print(f"실제 사람 길이 길이: {realSize}cm")
+    return findRealSize(EYE_TO_DIST, eyePx, dist) 
 
 # 포즈 구하는
 def pose(img: cv.typing.MatLike, modelSrc: str):
@@ -98,33 +110,49 @@ def pose(img: cv.typing.MatLike, modelSrc: str):
 
     # 사람 영역 구하기
     img = personArea(img, result)
-    
+
     # 길이 알고리즘 설정
     resultFunc = heightToPoint
     if REASLT_MODE == "눈 사이":
         resultFunc = eyeToPoint
-    
+
     shoulder = list(map(lambda x: person1Pose[BODY_PARTS[x]],  PARES_TOP["어께너비"]))
     body = list(map(lambda x: person1Pose[BODY_PARTS[x]],  PARES_TOP["상체너비"]))
     arm = list(map(lambda x: person1Pose[BODY_PARTS[x]],  PARES_TOP["팔 길이"]))
- 
-    # 시각화    
-    for name in PARES_TOP.keys():
-        for i, item in enumerate(PARES_TOP[name]):
-            pointIndex = BODY_PARTS[item]
-            points = person1Pose[pointIndex]
-            cv.ellipse(img, (int(points[0]), int(points[1])), (8, 8), 0, 0, 360, (0, 0, 255), cv.FILLED)
-            if len(PARES_TOP[name]) -1 > i:
-                nextIndex = BODY_PARTS[PARES_TOP[name][i+1]]
-                next = person1Pose[nextIndex]
-                cv.line(img, (int(points[0]), int(points[1])), (int(next[0]), int(next[1])), (0, 255, 0), thickness=cv.LINE_4)
 
-    print(f"어께너비: {round(resultFunc(result, shoulder), 2)}cm")
-    print(f"상체너비: {round(resultFunc(result, body), 2)}cm")
-    print(f"팔 길이: {round(resultFunc(result, arm), 2)}cm")
+    shoulderSize = round(resultFunc(result, shoulder), 2)
+    bodySize = round(resultFunc(result, body), 2)
+    armSize = round(resultFunc(result, arm), 2)
+
+    print(f"어께너비: {shoulderSize}cm")
+    print(f"상체너비: {bodySize}cm")
+    print(f"팔 길이: {armSize}cm")
+
+    # 시각화
+    for name in PARES_TOP.keys():
+        heght = img.shape[0]
+        if name == "팔 길이":
+            color = (255, 0, 0)
+            cv.putText(img, f"armSize: {armSize}cm", (30, int(heght*0.1)), cv.FONT_HERSHEY_SIMPLEX, 1.2, color, 2)
+        elif name == "어께너비":
+            color = (255, 0, 221)
+            cv.putText(img, f"shoulderSize: {shoulderSize}cm",
+                       (30, int(heght*0.14)), cv.FONT_HERSHEY_SIMPLEX, 1.2, color, 2)
+        else:
+            color = (0, 0, 255)
+            cv.putText(img, f"bodySize: {bodySize}cm", (30, int(heght*0.18)), cv.FONT_HERSHEY_SIMPLEX, 1.2, color, 2)
+
+        for i in range(len(PARES_TOP[name]) - 1):
+            index = BODY_PARTS[PARES_TOP[name][i]]
+            nextIndex = BODY_PARTS[PARES_TOP[name][i+1]]
+            points = person1Pose[index]
+            next = person1Pose[nextIndex]
+            cv.line(img, (int(points[0]), int(points[1])), (int(next[0]), int(next[1])), color, thickness=cv.LINE_4)
 
     return img
 
+
+img = reSize(img, 700)
 res = pose(img, "model/yolov8n-pose.pt")
 colorImg = cv.cvtColor(res, cv.COLOR_BGR2RGB)
 # cv.imwrite("bodyMEA/result.jpg", colorImg)
