@@ -1,7 +1,6 @@
 # 모션 트래킹 코드
-from typing import Any
+from typing import Any, Literal
 import cv2 as cv
-import numpy as np
 import matplotlib.pyplot as plt
 import math
 
@@ -17,8 +16,12 @@ BODY_PARTS = {"코": 0, "오른쪽 눈": 1, "왼쪽 눈": 2, "오른쪽 귀": 3,
 
 # 상체 점 연결
 PARES_TOP = {"팔 길이": ["왼쪽 어깨", "왼쪽 팔꿈치", "왼쪽 손목"], "어께너비": ["왼쪽 어깨", "오른쪽 어깨"], "상체너비": ["왼쪽 어깨", "왼쪽 골반"]}
+
 # 하체 점 연결
 PARES_BOTTOM = {"다리 길이": ["왼쪽 골반", "왼쪽 무릎", "왼쪽 발"]}
+
+# 길이 알고리즘 설정
+REASLT_MODE: Literal["눈 사이", "키"]  = "키"
 
 # 테스트 이미지
 img = cv.imread("bodyMEA/test.jpg")
@@ -35,7 +38,7 @@ def distance(points: list[tuple[float]]):
 # 기준 사물 높이 가지고 다른 사이즈 예측
 def findRealSize(refSize: int, refPx, findPx):
     cm_per_px = refSize / refPx
-    return round(findPx * cm_per_px)
+    return findPx * cm_per_px
 
 # 사람 영역 평가
 def personArea(img: cv.typing.MatLike, modelResult: Results):
@@ -54,16 +57,14 @@ def heightToPoint(modelResult: Results, testDist: list[Tensor]):
     person = modelResult.boxes[0].xywh[0]
 
     # 픽셀상 사람 길이
-    personPx = int(person[3])
+    personPx = float(person[3])
 
     # 구하려는 사이 픽셀 길이
     dist = distance(testDist)
 
     # 실제 길이 구하기
-    realSize = findRealSize(MY_KEY, personPx, dist)
-
-    print(f"픽셀길이: 구할려는거 {int(dist)}px, 픽셀상 사람 길이 {personPx}px")
-    print(f"실제 길이: {realSize}cm")
+    realSize = findRealSize(MY_KEY, personPx, dist)    
+    return realSize
 
 # 평균 눈 사이 거리로 측정하는 함수
 def eyeToPoint(modelResult: Results, testDist: list[Tensor]):
@@ -76,13 +77,12 @@ def eyeToPoint(modelResult: Results, testDist: list[Tensor]):
     # 픽셀상 사람 길이
     personPx = int(person[3])
 
-    # 눈 사이 픽셀상에 거리
+    # 눈 사이 픽셀상의 거리
     eyePx = distance(testDist)
 
     # 실제 길이 구하기
     realSize = findRealSize(EYE_TO_DIST, eyePx, personPx)
 
-    print(f"눈사이 픽셀길이: {int(eyePx)}px, 픽셀상 사람 길이: {personPx}px")
     print(f"실제 사람 길이 길이: {realSize}cm")
 
 # 포즈 구하는
@@ -96,40 +96,34 @@ def pose(img: cv.typing.MatLike, modelSrc: str):
     # 여러 사람 감지 될 시 한사람만 되게
     person1Pose = result.keypoints.xy[0]
 
-    # 대충 길이 테스트해 볼꺼
-    lenTest = [
-        person1Pose[BODY_PARTS["왼쪽 어깨"]],
-        person1Pose[BODY_PARTS["왼쪽 팔꿈치"]],
-        person1Pose[BODY_PARTS["왼쪽 손목"]]
-    ]
-
-    # 눈 사이 거리
-    eyeTest = [
-        person1Pose[BODY_PARTS["오른쪽 눈"]],
-        person1Pose[BODY_PARTS["왼쪽 눈"]]
-    ]
-
     # 사람 영역 구하기
     img = personArea(img, result)
+    
+    # 길이 알고리즘 설정
+    resultFunc = heightToPoint
+    if REASLT_MODE == "눈 사이":
+        resultFunc = eyeToPoint
+    
+    shoulder = list(map(lambda x: person1Pose[BODY_PARTS[x]],  PARES_TOP["어께너비"]))
+    body = list(map(lambda x: person1Pose[BODY_PARTS[x]],  PARES_TOP["상체너비"]))
+    arm = list(map(lambda x: person1Pose[BODY_PARTS[x]],  PARES_TOP["팔 길이"]))
+ 
+    # 시각화    
+    for name in PARES_TOP.keys():
+        for i, item in enumerate(PARES_TOP[name]):
+            pointIndex = BODY_PARTS[item]
+            points = person1Pose[pointIndex]
+            cv.ellipse(img, (int(points[0]), int(points[1])), (8, 8), 0, 0, 360, (0, 0, 255), cv.FILLED)
+            if len(PARES_TOP[name]) -1 > i:
+                nextIndex = BODY_PARTS[PARES_TOP[name][i+1]]
+                next = person1Pose[nextIndex]
+                cv.line(img, (int(points[0]), int(points[1])), (int(next[0]), int(next[1])), (0, 255, 0), thickness=cv.LINE_4)
 
-    # 사람 키 기준으로 측정하기
-    # heightToPoint(result, lenTest)
-
-    # 평균 눈사이 거리로 측정하기
-    eyeToPoint(result, eyeTest)
-
-    point1 = eyeTest[0]
-    point2 = eyeTest[1]
-
-    # 시각화
-    for key in BODY_PARTS.keys():
-        points = person1Pose[BODY_PARTS[key]]
-        cv.putText(img, str(BODY_PARTS[key]), (int(points[0]), int(points[1])),
-                   cv.FONT_HERSHEY_SIMPLEX, 3, (255, 0, 0), 2, cv.LINE_4)
-        cv.ellipse(img, (int(points[0]), int(points[1])), (8, 8), 0, 0, 360, (0, 0, 255), cv.FILLED)
+    print(f"어께너비: {round(resultFunc(result, shoulder), 2)}cm")
+    print(f"상체너비: {round(resultFunc(result, body), 2)}cm")
+    print(f"팔 길이: {round(resultFunc(result, arm), 2)}cm")
 
     return img
-
 
 res = pose(img, "model/yolov8n-pose.pt")
 colorImg = cv.cvtColor(res, cv.COLOR_BGR2RGB)
