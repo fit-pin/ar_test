@@ -10,15 +10,16 @@ from ultralytics.utils.plotting import Annotator
 from ultralytics.engine.results import Results
 
 BODY_PARTS = {"코": 0, "오른쪽 눈": 1, "왼쪽 눈": 2, "오른쪽 귀": 3, "왼쪽 귀": 4,
-              "오른쪽 어깨": 5, "왼쪽 어깨": 6, "오론쪽 팔꿈치": 7, "왼쪽 팔꿈치": 8, "오른쪽 손목": 9,
+              "오른쪽 어깨": 5, "왼쪽 어깨": 6, "오른쪽 팔꿈치": 7, "왼쪽 팔꿈치": 8, "오른쪽 손목": 9,
               "왼쪽 손목": 10, "오른쪽 골반": 11, "왼쪽 골반": 12, "오른쪽 무릎": 13, "왼쪽 무릎": 14,
               "오른쪽 발": 15, "왼쪽 발": 16}
 
 # 상체 점 연결
-PARES_TOP = {"팔 길이": ["왼쪽 어깨", "왼쪽 팔꿈치", "왼쪽 손목"], "어께너비": ["왼쪽 어깨", "오른쪽 어깨"], "상체너비": ["왼쪽 어깨", "왼쪽 골반"]}
+PARES_TOP = {"왼쪽 팔 길이": ["왼쪽 어깨", "왼쪽 팔꿈치", "왼쪽 손목"], "오른쪽 팔 길이": ["오른쪽 어깨", "오른쪽 팔꿈치", "오른쪽 손목"], 
+             "어께너비": ["왼쪽 어깨", "오른쪽 어깨"], "상체너비": ["왼쪽 어깨", "왼쪽 골반"]}
 
 # 하체 점 연결
-PARES_BOTTOM = {"다리 길이": ["왼쪽 골반", "왼쪽 무릎", "왼쪽 발"]}
+PARES_BOTTOM = {"왼쪽 다리 길이": ["왼쪽 골반", "왼쪽 무릎", "왼쪽 발"], "오른쪽 다리 길이": ["오른쪽 골반", "오른쪽 무릎", "오른쪽 발"]}
 
 # 길이 알고리즘 설정
 REASLT_MODE: Literal["눈 사이", "키"] = "키"
@@ -118,29 +119,40 @@ def pose(img: cv.typing.MatLike, modelSrc: str):
 
     shoulder = list(map(lambda x: person1Pose[BODY_PARTS[x]],  PARES_TOP["어께너비"]))
     body = list(map(lambda x: person1Pose[BODY_PARTS[x]],  PARES_TOP["상체너비"]))
-    arm = list(map(lambda x: person1Pose[BODY_PARTS[x]],  PARES_TOP["팔 길이"]))
+    
+    rightArm = list(map(lambda x: person1Pose[BODY_PARTS[x]],  PARES_TOP["오른쪽 팔 길이"]))
+    leftArm = list(map(lambda x: person1Pose[BODY_PARTS[x]],  PARES_TOP["왼쪽 팔 길이"]))
+    
+    rightLeg = list(map(lambda x: person1Pose[BODY_PARTS[x]],  PARES_BOTTOM["오른쪽 다리 길이"]))
+    leftLeg = list(map(lambda x: person1Pose[BODY_PARTS[x]],  PARES_BOTTOM["왼쪽 다리 길이"]))
 
     shoulderSize = round(resultFunc(result, shoulder), 2)
     bodySize = round(resultFunc(result, body), 2)
-    armSize = round(resultFunc(result, arm), 2)
+    
+    # 왼쪽 오른쪽 비교해서 가장 긴거
+    armSize = max([round(resultFunc(result, rightArm), 2), round(resultFunc(result, leftArm), 2)])
+    legSize = max([round(resultFunc(result, rightLeg), 2), round(resultFunc(result, leftLeg), 2)])
 
     print(f"팔 길이: {armSize}cm")
     print(f"어께너비: {shoulderSize}cm")
     print(f"상체너비: {bodySize}cm")
+    print(f"다리 길이: {legSize}cm")
 
-    # 시각화
+    """ 시각화 부분 """
+    heght = img.shape[0]
+    cv.putText(img, f"armSize: {armSize}cm", (30, int(heght*0.1)), cv.FONT_HERSHEY_SIMPLEX, 1.2, (255, 0, 0), 2)
+    cv.putText(img, f"shoulderSize: {shoulderSize}cm", (30, int(heght*0.14)), cv.FONT_HERSHEY_SIMPLEX, 1.2, (255, 0, 221), 2)
+    cv.putText(img, f"bodySize: {bodySize}cm", (30, int(heght*0.18)), cv.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 2)
+    cv.putText(img, f"legSize: {legSize}cm", (30, int(heght*0.22)), cv.FONT_HERSHEY_SIMPLEX, 1.2, (255, 162, 0), 2)
+    
+    # 상체 시각화
     for name in PARES_TOP.keys():
-        heght = img.shape[0]
-        if name == "팔 길이":
+        if name == "왼쪽 팔 길이" or name == "오른쪽 팔 길이":
             color = (255, 0, 0)
-            cv.putText(img, f"armSize: {armSize}cm", (30, int(heght*0.1)), cv.FONT_HERSHEY_SIMPLEX, 1.2, color, 2)
         elif name == "어께너비":
             color = (255, 0, 221)
-            cv.putText(img, f"shoulderSize: {shoulderSize}cm",
-                       (30, int(heght*0.14)), cv.FONT_HERSHEY_SIMPLEX, 1.2, color, 2)
         else:
             color = (0, 0, 255)
-            cv.putText(img, f"bodySize: {bodySize}cm", (30, int(heght*0.18)), cv.FONT_HERSHEY_SIMPLEX, 1.2, color, 2)
 
         for i in range(len(PARES_TOP[name]) - 1):
             index = BODY_PARTS[PARES_TOP[name][i]]
@@ -148,6 +160,15 @@ def pose(img: cv.typing.MatLike, modelSrc: str):
             points = person1Pose[index]
             next = person1Pose[nextIndex]
             cv.line(img, (int(points[0]), int(points[1])), (int(next[0]), int(next[1])), color, thickness=cv.LINE_4)
+            
+    # 하체 시각화
+    for name in PARES_BOTTOM.keys():
+        for i in range(len(PARES_BOTTOM[name]) - 1):
+            index = BODY_PARTS[PARES_BOTTOM[name][i]]
+            nextIndex = BODY_PARTS[PARES_BOTTOM[name][i+1]]
+            points = person1Pose[index]
+            next = person1Pose[nextIndex]
+            cv.line(img, (int(points[0]), int(points[1])), (int(next[0]), int(next[1])), (255, 162, 0), thickness=cv.LINE_4)
 
     return img
 
