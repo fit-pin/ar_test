@@ -15,7 +15,8 @@ import org.json.JSONObject;
 
 public class App {
 
-    public JSONObject fileupload(String url, String fileName, float personKey) throws IOException, FileNotFoundException, JSONException {
+    public JSONObject fileupload(String url, String fileName, float personKey)
+            throws IOException, FileNotFoundException, JSONException {
         URL link = new URL(url);
         HttpURLConnection huc = (HttpURLConnection) link.openConnection();
         // http 연결 부분
@@ -64,13 +65,17 @@ public class App {
             // 비정상 응답
             BufferedReader br = new BufferedReader(new InputStreamReader(huc.getInputStream(), "utf-8"));
             String json = br.readLine();
-            return  new JSONObject(json);
+            return new JSONObject(json);
         }
     }
-    public static void main(String[] args) throws Exception {
+    
+    public static void main(String[] args) {
         App app = new App();
-        JSONObject result = app.fileupload("http://korseok.kro.kr/bodymea", "test.jpg", 174);
-        System.err.println(result);
-
+        try {
+            JSONObject result = app.fileupload("http://korseok.kro.kr/bodymea", "test.jpg", 174);
+            System.err.println(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
