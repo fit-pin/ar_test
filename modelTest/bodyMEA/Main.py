@@ -47,7 +47,7 @@ PARES_BOTTOM = {
 REASLT_MODE: Literal["눈 사이", "키"] = "키"
 
 # 테스트 이미지
-img = cv.imread("bodyMEA/test.jpg")
+img = cv.imread("bodyMEA/res/test.jpg")
 
 
 # reWidth 값 기준으로 사이즈 줄이기
