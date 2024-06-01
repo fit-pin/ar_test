@@ -1,8 +1,0 @@
-poetry.lock
-__pycache__
-modelTest/bodyMEA/res/test.jpg
-modelTest/bodyMEA/res/result.jpg
-modelTest/bodyMEA/res/clothes_result.png
-apiTest/test.jpg
-apiTest/target/classes/com/seok/App.class
-apiTest/target/
