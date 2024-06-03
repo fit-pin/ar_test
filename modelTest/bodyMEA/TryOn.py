@@ -1,3 +1,4 @@
+from typing import Any, Literal
 import math
 import cv2 as cv
 import cvzone
@@ -29,7 +30,9 @@ BODY_PARTS = {
 
 MODEL = "model/yolov8n-pose.pt"
 PERSON_IMG = "bodyMEA/res/test.jpg"
-CLOTHES_IMG = "bodyMEA/res/clothes_result.png"
+
+CLOTHES_IMG = "bodyMEA/res/clothes_top_result.png"
+TYPE: Literal["top", "bottom"] = "top"
 
 
 # reWidth 값 기준으로 사이즈 줄이기
@@ -39,8 +42,8 @@ def reSize(img: cv.typing.MatLike, reWidth: int):
     return cv.resize(img, (reWidth, reHeight), interpolation=cv.INTER_AREA)
 
 
-# 채형 사진에 의류 이미지 합성하기
-def overlayClothes(backGround: cv.typing.MatLike, clothes: cv.typing.MatLike, personPose):
+# 채형 사진에 상의 이미지 합성하기
+def overlayClothesTop(backGround: cv.typing.MatLike, clothes: cv.typing.MatLike, personPose):
     # 의류 이미지 가로 실제 보정 배율
     WIDTH_CORR = 2.1
 
@@ -52,6 +55,32 @@ def overlayClothes(backGround: cv.typing.MatLike, clothes: cv.typing.MatLike, pe
 
     point1 = personPose[BODY_PARTS["왼쪽 어깨"]]
     point2 = personPose[BODY_PARTS["오른쪽 어깨"]]
+
+    # 어깨와 어꺠 사이로 이미지 사이즈 보정
+    x1, y1 = point1
+    x2, y2 = point2
+    distance = math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+    distance *= WIDTH_CORR
+
+    # 이미지 크기 보정하기
+    resize_clothes = reSize(clothes, int(distance))
+
+    # 체형 이미지와 보정된 의류 이미지 합성
+    return cvzone.overlayPNG(backGround, resize_clothes, (int(x1 * X_POINT_CORR), int(y1 * Y_POINT_CORR)))
+
+
+def overlayClothesBottom(backGround: cv.typing.MatLike, clothes: cv.typing.MatLike, personPose):
+    # 의류 이미지 가로 실제 보정 배율
+    WIDTH_CORR = 2.2
+
+    # X 좌표 보정
+    X_POINT_CORR = 0.84
+
+    # Y 좌표 보정
+    Y_POINT_CORR = 0.97
+
+    point1 = personPose[BODY_PARTS["왼쪽 골반"]]
+    point2 = personPose[BODY_PARTS["오른쪽 골반"]]
 
     # 어깨와 어꺠 사이로 이미지 사이즈 보정
     x1, y1 = point1
@@ -85,7 +114,10 @@ person1Pose = result.keypoints.xy[0]
 personimg_bgra = cv.cvtColor(personimg, cv.COLOR_BGR2BGRA)
 
 # 신체 이미지와 의류 이미지 합성
-overLayImg = overlayClothes(personimg_bgra, clothesimg, person1Pose)
+if TYPE == "top":
+    overLayImg = overlayClothesTop(personimg_bgra, clothesimg, person1Pose)
+else:
+    overLayImg = overlayClothesBottom(personimg_bgra, clothesimg, person1Pose)
 
 # 키포인트 시각화
 """ for inedx, point in enumerate(person1Pose):

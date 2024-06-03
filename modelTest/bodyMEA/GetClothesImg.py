@@ -5,7 +5,9 @@ import matplotlib.pyplot as plt
 from rembg import remove
 
 # 테스트 이미지
-img = cv.imread("bodyMEA/res/clothes.jpg")
+IMG = "bodyMEA/res/clothes_bottom.jpg"
+
+img = cv.imread(IMG)
 
 
 # reWidth 값 기준으로 사이즈 줄이기
@@ -42,6 +44,6 @@ def getClothesImg(img: cv.typing.MatLike):
 
 
 res = getClothesImg(img)
-cv.imwrite("bodyMEA/res/clothes_result.png", res)
+cv.imwrite(f"{IMG.split(".")[0]}_result.png", res)
 plt.imshow(res)
 plt.show()
