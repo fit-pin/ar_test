@@ -43,30 +43,28 @@ def reSize(img: cv.typing.MatLike, reWidth: int):
 def overlayClothes(backGround: cv.typing.MatLike, clothes: cv.typing.MatLike, personPose):
     # 의류 이미지 가로 실제 보정 배율
     WIDTH_CORR = 2.1
-    
+
     # X 좌표 보정
-    X_POINT_CORR = 0.81
-    
+    X_POINT_CORR = 0.79
+
     # Y 좌표 보정
-    Y_POINT_CORR = 0.92
-    
-    point1 = personPose[BODY_PARTS["왼쪽 어깨"]] 
+    Y_POINT_CORR = 0.93
+
+    point1 = personPose[BODY_PARTS["왼쪽 어깨"]]
     point2 = personPose[BODY_PARTS["오른쪽 어깨"]]
-    
+
     # 어깨와 어꺠 사이로 이미지 사이즈 보정
     x1, y1 = point1
     x2, y2 = point2
     distance = math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
     distance *= WIDTH_CORR
-        
+
     # 이미지 크기 보정하기
     resize_clothes = reSize(clothes, int(distance))
-    
-    print(int(x1), int(y1))
 
-   # 체형 이미지와 보정된 의류 이미지 합성
-    return cvzone.overlayPNG(backGround, resize_clothes, (int(x1*X_POINT_CORR), int(y1*Y_POINT_CORR)))
-    
+    # 체형 이미지와 보정된 의류 이미지 합성
+    return cvzone.overlayPNG(backGround, resize_clothes, (int(x1 * X_POINT_CORR), int(y1 * Y_POINT_CORR)))
+
 
 # 사람 이미지 불러오기
 personimg = cv.imread(PERSON_IMG)
@@ -87,7 +85,7 @@ person1Pose = result.keypoints.xy[0]
 personimg_bgra = cv.cvtColor(personimg, cv.COLOR_BGR2BGRA)
 
 # 신체 이미지와 의류 이미지 합성
-overLayImg =  overlayClothes(personimg_bgra, clothesimg, person1Pose)
+overLayImg = overlayClothes(personimg_bgra, clothesimg, person1Pose)
 
 # 키포인트 시각화
 """ for inedx, point in enumerate(person1Pose):
