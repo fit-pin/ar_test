@@ -40,9 +40,21 @@ def getClothesImg(img: cv.typing.MatLike, modelSrc: str):
             if mask[y, x] != 0:
                 # 해당 영역에 해당하는 오리지널 픽셀 복사해오기
                 result_img[y, x] = original_bgra[y, x]
-                result_img[y, x][3] = 255 
+                result_img[y, x][3] = 255
+                
+    # 알파 채널 분리
+    alpha_channel = result_img[:, :, 3]
+    
+    # 투명하지 않은 영역 찾기
+    coords = cv.findNonZero(alpha_channel)
 
-    return result_img
+    # 투명하지 않은 영역의 바운딩 박스 계산
+    x, y, w, h = cv.boundingRect(coords)
+
+    # 바운딩 박스를 기준으로 이미지 자르기
+    cropped_image = result_img[y:y+h, x:x+w]
+    
+    return cropped_image
 
 
 res = getClothesImg(img, "model/yolov8m-seg.pt")

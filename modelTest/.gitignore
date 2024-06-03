@@ -2,4 +2,5 @@ poetry.lock
 __pycache__
 bodyMEA/res/test.jpg
 bodyMEA/res/result.jpg
+bodyMEA/res/TryOn_reslts.jpg
 bodyMEA/res/clothes_result.png
