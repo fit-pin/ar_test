@@ -1,4 +1,4 @@
-poetry.lock
+.conda
 __pycache__
 bodyMEA/res/test.jpg
 bodyMEA/res/result.jpg
