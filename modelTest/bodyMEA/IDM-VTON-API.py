@@ -1,9 +1,9 @@
 from gradio_client import Client, handle_file
-from os import remove, path
+from os import path
 from shutil import rmtree
 from matplotlib import pyplot
 
-HUMAN_IMG = "bodyMEA/res/test2.jpg"
+HUMAN_IMG = "bodyMEA/res/test2.png"
 CLOTHE_IMG = "bodyMEA/res/clothes_top.jpg"
 
 client = Client("kadirnar/IDM-VTON", download_files="./bodyMEA/res/gradio/")
