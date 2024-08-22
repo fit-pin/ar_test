@@ -47,7 +47,7 @@ PARES_BOTTOM = {
 REASLT_MODE: Literal["눈 사이", "키"] = "키"
 
 # 테스트 이미지
-img = cv.imread("bodyMEA/res/test.jpg")
+img = cv.imread("res/test.jpg")
 
 
 # reWidth 값 기준으로 사이즈 줄이기
@@ -209,6 +209,6 @@ def pose(img: cv.typing.MatLike, modelSrc: str):
 img = reSize(img, 700)
 res = pose(img, "model/yolov8n-pose.pt")
 colorImg = cv.cvtColor(res, cv.COLOR_BGR2RGB)
-# cv.imwrite("bodyMEA/result.jpg", colorImg)
+# cv.imwrite("res/result.jpg", colorImg)
 plt.imshow(colorImg)
 plt.show()

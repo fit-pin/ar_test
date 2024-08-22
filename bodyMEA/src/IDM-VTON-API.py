@@ -3,10 +3,10 @@ from os import path
 from shutil import rmtree
 from matplotlib import pyplot
 
-HUMAN_IMG = "bodyMEA/res/background.jpg"
-CLOTHE_IMG = "bodyMEA/res/clothes_top.jpg"
+HUMAN_IMG = "res/background.jpg"
+CLOTHE_IMG = "res/clothes_top.jpg"
 
-client = Client("kadirnar/IDM-VTON", download_files="./bodyMEA/res/gradio/")
+client = Client("kadirnar/IDM-VTON", download_files="./res/gradio/")
 result = client.predict(
 		dict={"background": handle_file(HUMAN_IMG),"layers":[],"composite":  None},
 		garm_img=handle_file(CLOTHE_IMG),

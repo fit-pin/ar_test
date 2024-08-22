@@ -29,9 +29,9 @@ BODY_PARTS = {
 }
 
 MODEL = "model/yolov8n-pose.pt"
-PERSON_IMG = "bodyMEA/res/test.jpg"
+PERSON_IMG = "res/test.jpg"
 
-CLOTHES_IMG = "bodyMEA/res/clothes_top_result.png"
+CLOTHES_IMG = "res/clothes_top_result.png"
 TYPE: Literal["top", "bottom"] = "top"
 
 

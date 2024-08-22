@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from rembg import remove
 
 # 테스트 이미지
-IMG = "bodyMEA/res/clothes_bottom.jpg"
+IMG = "res/clothes_bottom.jpg"
 
 img = cv.imread(IMG)
 

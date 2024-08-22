@@ -5,10 +5,10 @@ import cv2 as cv
 
 
 # 테스트 이미지
-IMG = "bodyMEA/res/test.jpg"
+IMG = "res/test.jpg"
 
 # 저장경로
-SAVE_PATH = "bodyMEA/res/background.jpg"
+SAVE_PATH = "res/background.jpg"
 
 session = new_session("u2net_human_seg")
 
