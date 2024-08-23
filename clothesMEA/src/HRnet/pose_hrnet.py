@@ -348,7 +348,6 @@ class PoseHighResolutionNet(nn.Module):
     def __init__(self, **kwargs):
         self.inplanes = 64
 
-        # TODO: 이거 타입 알아올것
         extra = CONFIG["EXTRA"]
         self.model_name = CONFIG["MODEL_NAME"]
         self.target_type = CONFIG["MODEL_TARGET_TYPE"]
@@ -361,9 +360,7 @@ class PoseHighResolutionNet(nn.Module):
         self.bn2 = nn.BatchNorm2d(64, momentum=BN_MOMENTUM)
         self.layer1 = self._make_layer(Bottleneck, 64, 4)
 
-        # TODO: 이거 타입 알아올것
         self.stage2_cfg = CONFIG["EXTRA"]["STAGE2"]
-        # TODO: 이거 타입 알아올것
         num_channels = self.stage2_cfg["NUM_CHANNELS"]
         block = blocks_dict["BASIC"]
         num_channels = [
@@ -374,9 +371,7 @@ class PoseHighResolutionNet(nn.Module):
             self.stage2_cfg, num_channels
         )
 
-        # TODO: 이거 타입 알아올것
         self.stage3_cfg = CONFIG["EXTRA"]["STAGE3"]
-        # TODO: 이거 타입 알아올것
         num_channels = self.stage3_cfg["NUM_CHANNELS"]
         block = blocks_dict["BASIC"]
         num_channels = [
@@ -387,9 +382,7 @@ class PoseHighResolutionNet(nn.Module):
             self.stage3_cfg, num_channels
         )
 
-        # TODO: 이거 타입 알아올것
         self.stage4_cfg = CONFIG["EXTRA"]["STAGE4"]
-        # TODO: 이거 타입 알아올것
         num_channels = self.stage4_cfg["NUM_CHANNELS"]
         block = blocks_dict["BASIC"]
         num_channels = [
@@ -409,7 +402,6 @@ class PoseHighResolutionNet(nn.Module):
                 padding=1 if extra["FINAL_CONV_KERNEL"] == 3 else 0,
             )
 
-        # TODO: 이거 타입 알아오기
         self.pretrained_layers = CONFIG["EXTRA"]["PRETRAINED_LAYERS"]
 
     def _make_transition_layer(self, num_channels_pre_layer, num_channels_cur_layer):
