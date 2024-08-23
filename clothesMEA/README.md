@@ -10,6 +10,6 @@
 
 -   다운로드 하여 `pose_hrnet-w48_384x288-deepfashion2_mAP_0.7017.pth` 을 `model/` 폴더의 넣기
 
-### [DeepFashion2 데이터 세트 (선택사항)](https://github.com/switchablenorms/DeepFashion2)
+### [DeepFashion2 데이터 세트 (선택사항)](https://drive.google.com/drive/folders/125F48fsMBz2EF0Cpqk6aaHet5VH399Ok)
 
 -  `HRNet-for-Fashion-Landmark-Estimation.PyTorch`의 데이터 세트

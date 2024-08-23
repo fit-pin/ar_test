@@ -1,0 +1,14 @@
+name: clothesMEA
+channels:
+  - pytorch
+  - defaults
+dependencies:
+  - python=3.10.14
+  - pip==24.2
+  - pytorch==2.3.1
+  - torchaudio==2.3.1
+  - torchvision==0.18.1
+  - pip:
+      - opencv-python==4.10.0.84
+      - matplotlib==3.9.2
+prefix: .conda
