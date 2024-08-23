@@ -34,6 +34,16 @@ maskKeyPoints = {
 
 
 def getNormalizimage(img: cv2.typing.MatLike):
+    """
+    이미지를 288x384로 자르고 정규화 하여 반환 합니다.</br>
+    반환된 이미지로 `getKeyPointsResult()` 함수를 호출하여 keyPoint 를 예측합니다
+
+    Args:
+        img (cv2.typing.MatLike): cv 이미지
+
+    Returns:
+        Tensor: 정규화된 이미지 텐서
+    """
     y, x, _ = img.shape
     start_x = x // 2 - int(con.IMG_SIZE[0]) // 2
     start_y = y // 2 - int(con.IMG_SIZE[1]) // 2
@@ -48,6 +58,19 @@ def getNormalizimage(img: cv2.typing.MatLike):
 
 
 def getKeyPointsResult(predOutput: torch.Tensor, is_mask=True, flipTest=False, clothType: int = 1):
+    """
+    정규화된 이미지로 키포인트를 얻습니다
+
+    Args:
+        predOutput (Tensor): 정규화 이미지 텐서
+        is_mask (bool, optional): 의류 타입별 채널 마스크 여부 (안하면 오차 keyPoint가 발생)
+        flipTest (bool, optional): flipTest 여부
+        clothType (int, optional): 의류타입
+
+    Returns:
+        Tensor: 의류 키포인트
+    """
+
     if is_mask:
         channel_mask = torch.zeros((1, 294, 1)).cuda().float()
         
