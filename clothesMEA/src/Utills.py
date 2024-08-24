@@ -4,6 +4,7 @@ import numpy as np
 import torchvision.transforms as transforms
 import torch
 import configuration as con
+from typing import Literal
 
 
 Normal = transforms.Compose(
@@ -14,31 +15,52 @@ Normal = transforms.Compose(
 )
 """이미지 정규화 구성"""
 
-maskKeyPoints = {
-    1: (0, 25),
-    2: (25, 58),
-    3: (58, 89),
-    4: (89, 128),
-    5: (128, 143),
-    6: (143, 158),
-    7: (158, 168),
-    8: (168, 182),
-    9: (182, 190),
-    10: (190, 219),
-    11: (219, 256),
-    12: (256, 275),
-    13: (275, 294),
-}
-"""키포인트 마스크"""
 
-class Utills():
+maskKeyPoints = {
+    "반팔": (0, 25),
+    "긴팔": (25, 58),
+    "반팔 아우터": (58, 89),
+    "긴팔 아우터": (89, 128),
+    "조끼": (128, 143),
+    "슬링": (143, 158),
+    "반바지": (158, 168),
+    "긴바지": (168, 182),
+    "치마": (182, 190),
+    "반팔 원피스": (190, 219),
+    "긴팔 원피스": (219, 256),
+    "조끼 원피스": (256, 275),
+    "슬링 원피스": (275, 294),
+}
+"""
+키포인트 마스크
+[예시 참고 사진](https://github.com/switchablenorms/DeepFashion2/blob/master/images/cls.jpg)
+"""
+
+clothingType = Literal[
+    "반팔",
+    "긴팔",
+    "반팔 아우터",
+    "긴팔 아우터",
+    "조끼",
+    "슬링",
+    "반바지",
+    "긴바지",
+    "치마",
+    "반팔 원피스",
+    "긴팔 원피스",
+    "조끼 원피스",
+    "슬링 원피스",
+]
+"""maskKeyPoints의 Literal 타입"""
+
+
+class Utills:
     def __init__(self, device: torch.device):
         """
         Args:
             device (torch.device): 연산 gpu 장치
         """
         self.device = device
-
 
     def getNormalizimage(self, img: cv2.typing.MatLike):
         """
@@ -63,8 +85,13 @@ class Utills():
         res = torch.Tensor(np.expand_dims(nom, axis=0))
         return res
 
-
-    def getKeyPointsResult(self, predOutput: torch.Tensor, is_mask=True, flipTest=False, clothType: int = 1):
+    def getKeyPointsResult(
+        self,
+        predOutput: torch.Tensor,
+        is_mask=True,
+        flipTest=False,
+        clothType: clothingType = "반팔",
+    ):
         """
         정규화된 이미지로 키포인트를 얻습니다
 
@@ -80,8 +107,8 @@ class Utills():
 
         if is_mask:
             channel_mask = torch.zeros((1, 294, 1)).to(self.device).float()
-            
-            rg = maskKeyPoints[int(clothType)]
+
+            rg = maskKeyPoints[clothType]
             index = (
                 torch.tensor(
                     [list(range(rg[0], rg[1]))],
@@ -92,20 +119,19 @@ class Utills():
                 .long()
             )
             channel_mask[0].scatter_(0, index, 1)
-            
-            predOutput = predOutput * channel_mask.unsqueeze(3)
-        
-        preds_local = self.__get_final_preds(predOutput.detach().cpu().numpy())
-            
-        
-        return preds_local
 
+            predOutput = predOutput * channel_mask.unsqueeze(3)
+
+        preds_local = self.__get_final_preds(predOutput.detach().cpu().numpy())
+
+        return preds_local
 
     # 이 함수는 원본에서 불러온 것
     def __get_max_preds(self, batch_heatmaps):
-        assert isinstance(batch_heatmaps, np.ndarray), \
-            'batch_heatmaps should be numpy.ndarray'
-        assert batch_heatmaps.ndim == 4, 'batch_images should be 4-ndim'
+        assert isinstance(
+            batch_heatmaps, np.ndarray
+        ), "batch_heatmaps should be numpy.ndarray"
+        assert batch_heatmaps.ndim == 4, "batch_images should be 4-ndim"
 
         batch_size = batch_heatmaps.shape[0]
         num_joints = batch_heatmaps.shape[1]
@@ -141,13 +167,13 @@ class Utills():
                 hm = batch_heatmaps[n][p]
                 px = int(math.floor(coords[n][p][0] + 0.5))
                 py = int(math.floor(coords[n][p][1] + 0.5))
-                if 1 < px < heatmap_width-1 and 1 < py < heatmap_height-1:
+                if 1 < px < heatmap_width - 1 and 1 < py < heatmap_height - 1:
                     diff = np.array(
                         [
-                            hm[py][px+1] - hm[py][px-1],
-                            hm[py+1][px]-hm[py-1][px]
+                            hm[py][px + 1] - hm[py][px - 1],
+                            hm[py + 1][px] - hm[py - 1][px],
                         ]
                     )
-                    coords[n][p] += np.sign(diff) * .25
+                    coords[n][p] += np.sign(diff) * 0.25
 
         return coords
