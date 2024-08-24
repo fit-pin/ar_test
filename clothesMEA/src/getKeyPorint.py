@@ -28,12 +28,18 @@ print("모델 불러오기 성공")
 # 이미지 불러오기
 img = cv2.imread(TEST_IMG, cv2.IMREAD_COLOR)
 
-# 이미지 정규화 해서 예측하기
-normaImg = utils.getNormalizimage(img)
+#이미지 크기를 288x384 로 변경
+reSizeImage = utils.resizeWithPad(img, (288, 384))
+
+# 이미지 정규화 하기
+normaImg = utils.getNormalizimage(reSizeImage)
+
+# 해당 __call__  메소드 구현은 부모에 구현되있는데 그쪽에서 forward 함수를 호출하도록 설계함
+# 따라서 pose_hrnet.py 에 forward() 함수를 찾아가면 됨
 res = model(normaImg)
 
 # 키포인트 추려내기
-keyPoints = utils.getKeyPointsResult(res)
+keyPoints = utils.getKeyPointsResult(res, clothType="반팔")
 print("예측 성공")
 
 """시각화 부분"""
@@ -47,6 +53,6 @@ for points in keyPoints[0]:
     joint_x = Padding + points[0] * scaling_factor_x
     joint_y = Padding + points[1] * scaling_factor_y
     if points[0] or points[1]:
-        cv2.circle(img, (int(joint_x), int(joint_y)), 2, [0, 255, 0], 2)
+        cv2.circle(reSizeImage, (int(joint_x), int(joint_y)), 2, [0, 255, 0], 2)
 
-cv2.imwrite(SAVE_IMG, img)
+cv2.imwrite(SAVE_IMG, reSizeImage)

@@ -4,7 +4,7 @@ import numpy as np
 import torchvision.transforms as transforms
 import torch
 import configuration as con
-from typing import Literal
+from typing import Any, Literal, Tuple
 
 
 Normal = transforms.Compose(
@@ -64,7 +64,7 @@ class Utills:
 
     def getNormalizimage(self, img: cv2.typing.MatLike):
         """
-        이미지를 288x384로 자르고 정규화 하여 반환 합니다.</br>
+        이미지를 정규화 하여 반환 합니다.</br>
         반환된 이미지로 `getKeyPointsResult()` 함수를 호출하여 keyPoint 를 예측합니다
 
         Args:
@@ -73,15 +73,7 @@ class Utills:
         Returns:
             Tensor: 정규화된 이미지 텐서
         """
-        y, x, _ = img.shape
-        start_x = x // 2 - int(con.IMG_SIZE[0]) // 2
-        start_y = y // 2 - int(con.IMG_SIZE[1]) // 2
-        input = cv2.warpAffine(
-            img,
-            np.float32([[1, 0, -start_x], [0, 1, -start_y]]),  # type: ignore
-            (int(con.IMG_SIZE[0]), int(con.IMG_SIZE[1])),
-        )
-        nom = Normal(input)
+        nom = Normal(img)
         res = torch.Tensor(np.expand_dims(nom, axis=0))
         return res
 
@@ -125,6 +117,42 @@ class Utills:
         preds_local = self.__get_final_preds(predOutput.detach().cpu().numpy())
 
         return preds_local
+    
+    def resizeWithPad(
+        self,
+        image: cv2.typing.MatLike,
+        new_shape: Tuple[int, int],
+        padding_color: Tuple[int, int, int] = (255, 255, 255),
+    ) -> cv2.typing.MatLike:
+        """
+        비율을 유지하여 이미지를 자릅니다.</br>
+        이때 비율을 유지하기 위해 잘려진 부분은 `padding_color`로 채워 집니다
+        
+        Params:
+            image (MatLike): 원본 이미지
+            new_shape (Tuple[int, int]): 바꿀 크기
+            padding_color (Tuple[int, int, int]): 잘려진 부분 색상
+        Returns:
+            image (MatLike): 잘려진 이미지
+        """
+        original_shape = (image.shape[1], image.shape[0])
+        ratio = float(max(new_shape)) / max(original_shape)
+        new_size = tuple([int(x * ratio) for x in original_shape])
+        
+        if new_size[0] > new_shape[0] or new_size[1] > new_shape[1]:
+            ratio = float(min(new_shape)) / min(original_shape)
+            new_size = tuple([int(x * ratio) for x in original_shape])
+        
+        image = cv2.resize(image, new_size)
+        delta_w = new_shape[0] - new_size[0] if new_shape[0] > new_size[0] else 0
+        delta_h = new_shape[1] - new_size[1] if new_shape[1] > new_size[1] else 0
+        top, bottom = delta_h // 2, delta_h - (delta_h // 2)
+        left, right = delta_w // 2, delta_w - (delta_w // 2)
+        
+        image = cv2.copyMakeBorder(
+            image, top, bottom, left, right, cv2.BORDER_CONSTANT, value=padding_color
+        )
+        return image
 
     # 이 함수는 원본에서 불러온 것
     def __get_max_preds(self, batch_heatmaps):
