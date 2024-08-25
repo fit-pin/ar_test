@@ -117,7 +117,7 @@ class Utills:
         preds_local = self.__get_final_preds(predOutput.detach().cpu().numpy())
 
         return preds_local
-    
+
     def resizeWithPad(
         self,
         image: cv2.typing.MatLike,
@@ -127,7 +127,7 @@ class Utills:
         """
         비율을 유지하여 이미지를 자릅니다.</br>
         이때 비율을 유지하기 위해 잘려진 부분은 `padding_color`로 채워 집니다
-        
+
         Params:
             image (MatLike): 원본 이미지
             new_shape (Tuple[int, int]): 바꿀 크기
@@ -138,20 +138,28 @@ class Utills:
         original_shape = (image.shape[1], image.shape[0])
         ratio = float(max(new_shape)) / max(original_shape)
         new_size = tuple([int(x * ratio) for x in original_shape])
-        
-        if new_size[0] > new_shape[0] or new_size[1] > new_shape[1]:
-            ratio = float(min(new_shape)) / min(original_shape)
-            new_size = tuple([int(x * ratio) for x in original_shape])
-        
+
+        test_w = new_shape[0] - new_size[0]
+        test_h = new_shape[1] - new_size[1]
+
+        if test_w < 0:
+            ratio = float(new_shape[0] / new_size[0])
+            new_size = tuple([int(x * ratio) for x in new_size])
+        elif test_h < 0:
+            ratio = float(new_shape[1] / new_size[1])
+            new_size = tuple([int(x * ratio) for x in new_size])
+
         image = cv2.resize(image, new_size)
-        delta_w = new_shape[0] - new_size[0] if new_shape[0] > new_size[0] else 0
-        delta_h = new_shape[1] - new_size[1] if new_shape[1] > new_size[1] else 0
+
+        delta_w = new_shape[0] - new_size[0]
+        delta_h = new_shape[1] - new_size[1]
         top, bottom = delta_h // 2, delta_h - (delta_h // 2)
         left, right = delta_w // 2, delta_w - (delta_w // 2)
-        
+
         image = cv2.copyMakeBorder(
             image, top, bottom, left, right, cv2.BORDER_CONSTANT, value=padding_color
         )
+
         return image
 
     # 이 함수는 원본에서 불러온 것

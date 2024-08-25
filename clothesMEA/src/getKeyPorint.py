@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import torch
 import cv2
 import configuration as con
@@ -18,7 +19,7 @@ if torch.cuda.is_available():
 model = pose_hrnet.get_pose_net()
 model.load_state_dict(torch.load(MODEL_CKP, map_location=device), strict=True)
 
-# to() = cpu() 쓸지 cuda() 쓸지 device 메게 변수로 알아서 처리 
+# to() = cpu() 쓸지 cuda() 쓸지 device 메게 변수로 알아서 처리
 model = torch.nn.DataParallel(model).to(device)
 model.eval()
 utils = Utills(device)
@@ -28,7 +29,7 @@ print("모델 불러오기 성공")
 # 이미지 불러오기
 img = cv2.imread(TEST_IMG, cv2.IMREAD_COLOR)
 
-#이미지 크기를 288x384 로 변경
+# 이미지 크기를 288x384 로 변경
 reSizeImage = utils.resizeWithPad(img, (288, 384))
 
 # 이미지 정규화 하기
@@ -46,13 +47,15 @@ print("예측 성공")
 Padding = 2
 
 # 히트맵 사이즈 보정
-scaling_factor_x = normaImg.shape[2] / con.HEATMAP_SIZE[0]
-scaling_factor_y = normaImg.shape[3] / con.HEATMAP_SIZE[1]
+scaling_factor_x = img.shape[0] / con.HEATMAP_SIZE[0]
+scaling_factor_y = img.shape[1] / con.HEATMAP_SIZE[1]
 
 for points in keyPoints[0]:
     joint_x = Padding + points[0] * scaling_factor_x
     joint_y = Padding + points[1] * scaling_factor_y
     if points[0] or points[1]:
-        cv2.circle(reSizeImage, (int(joint_x), int(joint_y)), 2, [0, 255, 0], 2)
+        cv2.circle(img, (int(joint_x), int(joint_y)), 2, [0, 255, 0], 15)
 
-cv2.imwrite(SAVE_IMG, reSizeImage)
+cv2.imwrite(SAVE_IMG, img)
+plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+plt.show()
