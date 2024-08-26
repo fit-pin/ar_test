@@ -123,7 +123,9 @@ class Utills:
         image: cv2.typing.MatLike,
         new_shape: Tuple[int, int],
         padding_color: Tuple[int, int, int] = (255, 255, 255),
-    ) -> cv2.typing.MatLike:
+    ) -> tuple[
+        cv2.typing.MatLike, dict[Literal["top", "bottom", "left", "right"], int]
+    ]:
         """
         비율을 유지하여 이미지를 자릅니다.</br>
         이때 비율을 유지하기 위해 잘려진 부분은 `padding_color`로 채워 집니다
@@ -133,7 +135,9 @@ class Utills:
             new_shape (Tuple[int, int]): 바꿀 크기
             padding_color (Tuple[int, int, int]): 잘려진 부분 색상
         Returns:
-            image (MatLike): 잘려진 이미지
+            tuple[cv2.typing.MatLike, dict[str, int]]</br>
+            - `[0]`: 잘려진 이미지
+            - `[1]`: paddig 값
         """
         original_shape = (image.shape[1], image.shape[0])
         ratio = float(max(new_shape)) / max(original_shape)
@@ -160,7 +164,7 @@ class Utills:
             image, top, bottom, left, right, cv2.BORDER_CONSTANT, value=padding_color
         )
 
-        return image
+        return image, {"top": top, "bottom": bottom, "left": left, "right": right}
 
     # 이 함수는 원본에서 불러온 것
     def __get_max_preds(self, batch_heatmaps):
