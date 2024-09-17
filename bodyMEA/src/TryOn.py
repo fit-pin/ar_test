@@ -43,7 +43,9 @@ def reSize(img: cv.typing.MatLike, reWidth: int):
 
 
 # 채형 사진에 상의 이미지 합성하기
-def overlayClothesTop(backGround: cv.typing.MatLike, clothes: cv.typing.MatLike, personPose):
+def overlayClothesTop(
+    backGround: cv.typing.MatLike, clothes: cv.typing.MatLike, personPose
+):
     # 의류 이미지 가로 실제 보정 배율
     WIDTH_CORR = 2.1
 
@@ -66,10 +68,14 @@ def overlayClothesTop(backGround: cv.typing.MatLike, clothes: cv.typing.MatLike,
     resize_clothes = reSize(clothes, int(distance))
 
     # 체형 이미지와 보정된 의류 이미지 합성
-    return cvzone.overlayPNG(backGround, resize_clothes, (int(x1 * X_POINT_CORR), int(y1 * Y_POINT_CORR)))
+    return cvzone.overlayPNG(
+        backGround, resize_clothes, (int(x1 * X_POINT_CORR), int(y1 * Y_POINT_CORR))
+    )
 
 
-def overlayClothesBottom(backGround: cv.typing.MatLike, clothes: cv.typing.MatLike, personPose):
+def overlayClothesBottom(
+    backGround: cv.typing.MatLike, clothes: cv.typing.MatLike, personPose
+):
     # 의류 이미지 가로 실제 보정 배율
     WIDTH_CORR = 2.2
 
@@ -92,7 +98,9 @@ def overlayClothesBottom(backGround: cv.typing.MatLike, clothes: cv.typing.MatLi
     resize_clothes = reSize(clothes, int(distance))
 
     # 체형 이미지와 보정된 의류 이미지 합성
-    return cvzone.overlayPNG(backGround, resize_clothes, (int(x1 * X_POINT_CORR), int(y1 * Y_POINT_CORR)))
+    return cvzone.overlayPNG(
+        backGround, resize_clothes, (int(x1 * X_POINT_CORR), int(y1 * Y_POINT_CORR))
+    )
 
 
 # 사람 이미지 불러오기
