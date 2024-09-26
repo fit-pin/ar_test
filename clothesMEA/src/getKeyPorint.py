@@ -6,7 +6,7 @@ import configuration as con
 from HRnet import pose_hrnet
 from Utills import Utills
 
-TEST_IMG = "res/test.jpg"
+TEST_IMG = "res/test4.jpg"
 SAVE_IMG = "res/result.jpg"
 MODEL_CKP = "model/pose_hrnet-w48_384x288-deepfashion2_mAP_0.7017.pth"
 
