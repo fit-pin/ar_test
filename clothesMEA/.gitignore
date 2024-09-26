@@ -1,3 +1,5 @@
 model/*.pth
+model/*.pt
 res/result.jpg
 dataset
+runs/
