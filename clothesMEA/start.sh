@@ -1,0 +1,1 @@
+python src/cardDict_train.py

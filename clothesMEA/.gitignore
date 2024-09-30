@@ -1,5 +1,6 @@
 model/*.pth
 model/*.pt
 res/result.jpg
-dataset
-runs/
+dataset/*
+!dataset/*.txt
+runs/*

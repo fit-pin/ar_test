@@ -12,4 +12,5 @@ dependencies:
   - pip:
       - opencv-python==4.10.0.84
       - matplotlib==3.9.2
+      - ultralytics
 prefix: .conda
