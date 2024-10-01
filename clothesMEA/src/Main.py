@@ -1,13 +1,10 @@
-import multiprocessing.process
-import time
+import threading
 import matplotlib.pyplot as plt
 
 from torch import Tensor, load
 from torch import device as Device
 from torch.nn import DataParallel
 from torch.cuda import is_available
-
-import multiprocessing
 
 import cv2
 from ultralytics import YOLO
@@ -23,32 +20,32 @@ KEYPOINT_MODEL_CKP = "model/pose_hrnet-w48_384x288-deepfashion2_mAP_0.7017.pth"
 CARDPOINT_MODEL_CKP = "model/Clothes-Card.pt"
 
 
-def getCardPoint(queue: multiprocessing.Queue, img: cv2.typing.MatLike, utils: Utills):
+def getCardPoint(syncData: dict, img: cv2.typing.MatLike, utils: Utills):
     print("getCardPoint: 시작")
     model = YOLO(CARDPOINT_MODEL_CKP)
     print("getCardPoint: 모델 불러오기 성공")
     result = model.predict(img)[0]
     print("getCardPoint: 예측 성공")
 
-    if not len(result.obb.cls):
+    if not len(result.obb.cls):  # type: ignore
         raise Exception("카드 감지 불가")
 
     # 예측확율 가장 좋은거 선택
     max_value = 0.0
     max_index = 0
-    for i, card in enumerate(result.obb.conf):
+    for i, card in enumerate(result.obb.conf):  # type: ignore
         if max_value < float(card):
             max_value = float(card)
             max_index = i
 
-    points: Tensor = result.obb.xyxyxyxy[max_index]
+    points: Tensor = result.obb.xyxyxyxy[max_index]  # type: ignore
 
     # list로 바꾸기
     res = [[float(point[0]), float(point[1])] for point in points]
-    queue.put({"getCardPoint": res})
+    syncData["getCardPoint"] = res
 
 
-def getKeyPoints(queue: multiprocessing.Queue, img: cv2.typing.MatLike, utils: Utills):
+def getKeyPoints(syncData: dict, img: cv2.typing.MatLike, utils: Utills):
     print("getKeyPoints: 시작")
     # 모델 불러오기
     model = pose_hrnet.get_pose_net()
@@ -105,7 +102,7 @@ def getKeyPoints(queue: multiprocessing.Queue, img: cv2.typing.MatLike, utils: U
             final_y = joint_y * ratio_y - (ratio_y * padding["top"])
             result_points.append([final_x, final_y])
 
-    queue.put({"getKeyPoints": result_points})
+    syncData["getKeyPoints"] = result_points
 
 
 def main():
@@ -119,32 +116,24 @@ def main():
     # 이미지 불러오기
     img = cv2.imread(TEST_IMG, cv2.IMREAD_COLOR)
 
-    # 멀티 프로세싱 큐 생성
-    queue = multiprocessing.Queue()
+    # 멀티쓰레딩 결과 저장용
+    syncData: dict = dict()
+    
+    # getKeyPoints 쓰레드 생성
+    CardPointThread = threading.Thread(target=getCardPoint, args=(syncData, img, utils))
+    # getKeyPoints 쓰레드 생성
+    keyPointThread = threading.Thread(target=getKeyPoints, args=(syncData, img, utils))
 
-    # getKeyPoints 멀티 프로세싱 생성
-    CardPointProcess = multiprocessing.Process(
-        target=getCardPoint, args=(queue, img, utils)
-    )
-    # getKeyPoints 멀티 프로세싱 생성
-    keyPointProcess = multiprocessing.Process(
-        target=getKeyPoints, args=(queue, img, utils)
-    )
-
-    # 프로세스 시작
-    # TODO: Frozen Start 문제 해결해야함
-    CardPointProcess.start()
-    keyPointProcess.start()
-
+    # 쓰레드 시작
+    CardPointThread.start()
+    keyPointThread.start()
 
     # 완료대기
-    CardPointProcess.join()
-    keyPointProcess.join()
+    CardPointThread.join()
+    keyPointThread.join()
+    
+    print(syncData)
 
-    queue1 = queue.get()
-    queue2 = queue.get()
-    print(queue1)
-    print(queue2)
 
     # cv2.circle(img, (int(ch_keyPoints[:][0]), int(ch_keyPoints[:][1])), 2, [0, 255, 0], 15)
 
