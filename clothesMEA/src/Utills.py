@@ -1,10 +1,17 @@
 import math
-import cv2
 import numpy as np
 import torchvision.transforms as transforms
-import torch
+
+from torch import device as Device
+from torch import Tensor
+from torch import tensor
+from torch import zeros
+
+from cv2.typing import MatLike
+from cv2 import resize, copyMakeBorder, BORDER_CONSTANT
+
 import configuration as con
-from typing import Any, Literal, Tuple
+from typing import Literal, Tuple
 
 
 Normal = transforms.Compose(
@@ -55,14 +62,14 @@ clothingType = Literal[
 
 
 class Utills:
-    def __init__(self, device: torch.device):
+    def __init__(self, device: Device):
         """
         Args:
             device (torch.device): 연산 gpu 장치
         """
         self.device = device
 
-    def getNormalizimage(self, img: cv2.typing.MatLike):
+    def getNormalizimage(self, img: MatLike):
         """
         이미지를 정규화 하여 반환 합니다.</br>
         반환된 이미지로 `getKeyPointsResult()` 함수를 호출하여 keyPoint 를 예측합니다
@@ -74,12 +81,12 @@ class Utills:
             Tensor: 정규화된 이미지 텐서
         """
         nom = Normal(img)
-        res = torch.Tensor(np.expand_dims(nom, axis=0))
+        res = Tensor(np.expand_dims(nom, axis=0))
         return res
 
     def getKeyPointsResult(
         self,
-        predOutput: torch.Tensor,
+        predOutput: Tensor,
         is_mask=True,
         flipTest=False,
         clothType: clothingType = "반팔",
@@ -98,11 +105,11 @@ class Utills:
         """
 
         if is_mask:
-            channel_mask = torch.zeros((1, 294, 1)).to(self.device).float()
+            channel_mask = zeros((1, 294, 1)).to(self.device).float()
 
             rg = maskKeyPoints[clothType]
             index = (
-                torch.tensor(
+                tensor(
                     [list(range(rg[0], rg[1]))],
                     device=channel_mask.device,
                     dtype=channel_mask.dtype,
@@ -120,11 +127,11 @@ class Utills:
 
     def resizeWithPad(
         self,
-        image: cv2.typing.MatLike,
+        image: MatLike,
         new_shape: Tuple[int, int],
         padding_color: Tuple[int, int, int] = (255, 255, 255),
     ) -> tuple[
-        cv2.typing.MatLike, dict[Literal["top", "bottom", "left", "right"], int]
+        MatLike, dict[Literal["top", "bottom", "left", "right"], int]
     ]:
         """
         비율을 유지하여 이미지를 자릅니다.</br>
@@ -153,15 +160,15 @@ class Utills:
             ratio = float(new_shape[1] / new_size[1])
             new_size = tuple([int(x * ratio) for x in new_size])
 
-        image = cv2.resize(image, new_size)
+        image = resize(image, new_size)
 
         delta_w = new_shape[0] - new_size[0]
         delta_h = new_shape[1] - new_size[1]
         top, bottom = delta_h // 2, delta_h - (delta_h // 2)
         left, right = delta_w // 2, delta_w - (delta_w // 2)
 
-        image = cv2.copyMakeBorder(
-            image, top, bottom, left, right, cv2.BORDER_CONSTANT, value=padding_color
+        image = copyMakeBorder(
+            image, top, bottom, left, right, BORDER_CONSTANT, value=padding_color
         )
 
         return image, {"top": top, "bottom": bottom, "left": left, "right": right}
