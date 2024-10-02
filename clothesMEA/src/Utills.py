@@ -235,3 +235,35 @@ class Utills:
                 resultDict[key] = [resultPoint[index] for index in BottomMea[key]]
 
         return resultDict
+    
+    def distance(self, points: list[Tensor]) -> float:
+        """여러 점들 사이 길이 구하는 함수
+
+        Args:
+            points (list[tuple[float]]): (x,  y) 이걸 구하고 싶은 만큼 list로 묶어서
+
+        Returns:
+            float: 점 전체 길이
+        """
+
+        distance = 0
+        for i in range(len(points) - 1):
+            x1, y1 = points[i]
+            x2, y2 = points[i + 1]
+            distance += math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+        return distance
+    
+    def findRealSize(self, refSize: float, refPx: float, findPx: float):
+        """기준 사물 높이 가지고 다른 사이즈 예측
+
+        Args:
+            refSize (float): 기준 사물 크기(cm)
+            refPx (float): 기준 사물 픽셀상 크기
+            findPx (float): 찾으려는 사물 픽셀상 크기
+
+        Returns:
+            float: 사물사이즈(cm)
+        """
+
+        cm_per_px = refSize / refPx
+        return findPx * cm_per_px

@@ -3,7 +3,7 @@ import threading
 from typing import Literal
 import matplotlib.pyplot as plt
 
-from torch import Tensor, cat, load, tensor
+from torch import Tensor, cat, le, load, tensor
 from torch import device as Device
 from torch.nn import DataParallel
 from torch.cuda import is_available
@@ -17,9 +17,9 @@ from HRnet import pose_hrnet
 from Utills import TopMeaType, Utills
 from custumTypes import BottomMeaType, maskKeyPointsType
 
-TEST_IMG = "res/test2.jpg"
+TEST_IMG = "res/test3.jpg"
 SAVE_IMG = "res/result.jpg"
-CLOTH_TYPE: maskKeyPointsType = "긴바지"
+CLOTH_TYPE: maskKeyPointsType = "긴팔"
 
 KEYPOINT_MODEL_CKP = "model/pose_hrnet-w48_384x288-deepfashion2_mAP_0.7017.pth"
 CARDPOINT_MODEL_CKP = "model/Clothes-Card.pt"
@@ -33,7 +33,6 @@ def getCardHeight(syncData: dict, img: cv2.typing.MatLike, utils: Utills):
     print("getCardPoint: 예측 성공")
 
     if not len(result.obb.cls):  # type: ignore
-        return
         raise Exception("카드 감지 불가")
 
     # 예측확율 가장 좋은거 선택
@@ -113,7 +112,7 @@ def getKeyPoints(syncData: dict, img: cv2.typing.MatLike, utils: Utills):
     syncData["getKeyPoints"] = result_points
 
 
-# 키포인트 시각화용
+# 싩측크기 참고용 시각화 코드
 def refKeyPoint(img: cv2.typing.MatLike, resultPoint: Tensor):
     for i, point in enumerate(resultPoint):
         R = randint(0, 255)
@@ -131,6 +130,23 @@ def refKeyPoint(img: cv2.typing.MatLike, resultPoint: Tensor):
         )
 
     cv2.imwrite("res/refTest.jpg", img)
+    plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    plt.show()
+
+
+def viewSample(img: cv2.typing.MatLike, MEADdata: dict[TopMeaType, list[Tensor]]):
+    for part in MEADdata.keys():
+        points = MEADdata[part]
+        R = randint(0, 255)
+        G = randint(0, 255)
+        B = randint(0, 255)
+        for i, point in enumerate(points):
+            cv2.circle(img, (int(point[0]), int(point[1])), 2, [B, G, R], 10)
+            if i < len(points) - 1:
+                pt1 = (int(points[i][0]), int(points[i][1]))
+                pt2 = (int(points[i + 1][0]), int(points[i + 1][1]))
+                cv2.line(img, pt1, pt2, [B, G, R], 5)
+
     plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
     plt.show()
 
@@ -165,11 +181,26 @@ def main():
     keyPointThread.join()
 
     ch_point = syncData["getKeyPoints"]
+    card_px = float(syncData["getCardHeight"])
+
     print(f"감지된 점: {len(ch_point)}개")
 
     # 긴팔: TopMeaType
     # 긴바지: BottomMeaType
     MEAData: dict[TopMeaType, list[Tensor]] = utils.getMEApoints(ch_point, CLOTH_TYPE)  # type: ignore
+
+    pixelDist_Dict: dict[TopMeaType, float] = {}
+    for idx in MEAData.keys():
+        pixelDist_Dict[idx] = utils.distance(MEAData[idx])
+
+    realDist_Dict: dict[TopMeaType, float] = {}
+    for idx in pixelDist_Dict.keys():
+        realDist_Dict[idx] = utils.findRealSize(
+            con.CARD_SIZE[1], card_px, pixelDist_Dict[idx]
+        )
+
+    print(realDist_Dict)
+
 
 if __name__ == "__main__":
     main()
