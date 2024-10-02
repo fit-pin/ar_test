@@ -2,7 +2,7 @@ import math
 import numpy as np
 import torchvision.transforms as transforms
 from custumTypes import BottomMeaType, TopMeaType, maskKeyPointsType
-from torch import device as Device
+from torch import device as Device, stack
 from torch import Tensor
 from torch import tensor
 from torch import zeros
@@ -225,18 +225,31 @@ class Utills:
 
     def getMEApoints(
         self, resultPoint: Tensor, type: Literal["긴팔", "긴바지"]
-    ) -> dict[Any, list[Tensor]]:
+    ) -> dict[Any, Tensor]:
+        """
+        실측 크기에 유의미한 좌표값을 얻습니다.</br>
+        
+        긴팔 Type: `dict[TopMeaType, list[Tensor]]`</br>
+        긴바지 Type: `dict[BottomMeaType, list[Tensor]]`</br>
+        Args:
+            resultPoint (Tensor): 전체 결과 키포인트
+            type (Literal["긴팔", "긴바지"]):
+
+        Returns:
+            dict[Any, Tensor]: 결과반환
+        """
         resultDict = {}
         if type == "긴팔":
             for key in TopMea.keys():
-                resultDict[key] = [resultPoint[index] for index in TopMea[key]]
+                # 이게 리스트 안에 Tensor 가 있어서 stack() 함수로 전체를 변환해야함
+                resultDict[key] = stack([resultPoint[index] for index in TopMea[key]])
         elif type == "긴바지":
             for key in BottomMea.keys():
-                resultDict[key] = [resultPoint[index] for index in BottomMea[key]]
+                resultDict[key] = stack([resultPoint[index] for index in BottomMea[key]])
 
         return resultDict
-    
-    def distance(self, points: list[Tensor]) -> float:
+
+    def distance(self, points: Tensor | list) -> float:
         """여러 점들 사이 길이 구하는 함수
 
         Args:
@@ -252,7 +265,7 @@ class Utills:
             x2, y2 = points[i + 1]
             distance += math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
         return distance
-    
+
     def findRealSize(self, refSize: float, refPx: float, findPx: float):
         """기준 사물 높이 가지고 다른 사이즈 예측
 

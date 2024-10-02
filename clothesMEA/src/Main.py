@@ -1,9 +1,9 @@
 from random import randint
 import threading
-from typing import Literal
+from typing import Any, Literal
 import matplotlib.pyplot as plt
 
-from torch import Tensor, cat, le, load, tensor
+from torch import Tensor, cat, load, tensor
 from torch import device as Device
 from torch.nn import DataParallel
 from torch.cuda import is_available
@@ -14,8 +14,8 @@ import configuration as con
 
 from HRnet import pose_hrnet
 
-from Utills import TopMeaType, Utills
-from custumTypes import BottomMeaType, maskKeyPointsType
+from Utills import Utills
+from custumTypes import BottomMeaType, TopMeaType, maskKeyPointsType
 
 TEST_IMG = "res/test3.jpg"
 SAVE_IMG = "res/result.jpg"
@@ -134,18 +134,37 @@ def refKeyPoint(img: cv2.typing.MatLike, resultPoint: Tensor):
     plt.show()
 
 
-def viewSample(img: cv2.typing.MatLike, MEADdata: dict[TopMeaType, list[Tensor]]):
-    for part in MEADdata.keys():
-        points = MEADdata[part]
-        R = randint(0, 255)
-        G = randint(0, 255)
-        B = randint(0, 255)
-        for i, point in enumerate(points):
-            cv2.circle(img, (int(point[0]), int(point[1])), 2, [B, G, R], 10)
-            if i < len(points) - 1:
-                pt1 = (int(points[i][0]), int(points[i][1]))
-                pt2 = (int(points[i + 1][0]), int(points[i + 1][1]))
-                cv2.line(img, pt1, pt2, [B, G, R], 5)
+# 전체 시각화
+def viewSample(
+    img: cv2.typing.MatLike, MEAData: dict[Any, Tensor], card_px: float, utils: Utills
+):
+    realDist_Dict: dict[Any, float] = {}
+    for idx in MEAData.keys():
+        pixelSize = utils.distance(MEAData[idx])
+        realDist_Dict[idx] = utils.findRealSize(con.CARD_SIZE[1], card_px, pixelSize)
+
+    for i, part in enumerate(MEAData.keys()):
+        points = MEAData[part]
+
+        # TODO: 텍스트 겹치는 문제 해결
+        center = MEAData[part].mean(dim=0)
+        strSize = f"{round(realDist_Dict[part], 2)}cm"
+
+        cv2.putText(
+            img,
+            strSize,
+            (int(center[0]), int(center[1]) - 20),
+            cv2.FONT_HERSHEY_PLAIN,
+            3,
+            con.COLOR_MAP[i],
+            5,
+        )
+        for k, point in enumerate(points):
+            cv2.circle(img, (int(point[0]), int(point[1])), 2, con.COLOR_MAP[i], 10)
+            if k < len(points) - 1:
+                pt1 = (int(points[k][0]), int(points[k][1]))
+                pt2 = (int(points[k + 1][0]), int(points[k + 1][1]))
+                cv2.line(img, pt1, pt2, con.COLOR_MAP[i], 5)
 
     plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
     plt.show()
@@ -187,19 +206,20 @@ def main():
 
     # 긴팔: TopMeaType
     # 긴바지: BottomMeaType
-    MEAData: dict[TopMeaType, list[Tensor]] = utils.getMEApoints(ch_point, CLOTH_TYPE)  # type: ignore
+    MEAData: dict[TopMeaType, Tensor] = utils.getMEApoints(ch_point, CLOTH_TYPE)  # type: ignore
 
-    pixelDist_Dict: dict[TopMeaType, float] = {}
+    pixelDist_Dict: dict[Any, float] = {}
     for idx in MEAData.keys():
         pixelDist_Dict[idx] = utils.distance(MEAData[idx])
 
-    realDist_Dict: dict[TopMeaType, float] = {}
+    realDist_Dict: dict[Any, float] = {}
     for idx in pixelDist_Dict.keys():
         realDist_Dict[idx] = utils.findRealSize(
             con.CARD_SIZE[1], card_px, pixelDist_Dict[idx]
         )
 
-    print(realDist_Dict)
+    viewSample(img, MEAData, card_px, utils)
+    # print(realDist_Dict)
 
 
 if __name__ == "__main__":
