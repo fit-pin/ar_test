@@ -1,7 +1,7 @@
 import math
 import numpy as np
 import torchvision.transforms as transforms
-
+from custumTypes import BottomMeaType, TopMeaType, maskKeyPointsType
 from torch import device as Device
 from torch import Tensor
 from torch import tensor
@@ -11,7 +11,7 @@ from cv2.typing import MatLike
 from cv2 import resize, copyMakeBorder, BORDER_CONSTANT
 
 import configuration as con
-from typing import Literal, Tuple
+from typing import Any, Literal, Tuple
 
 
 Normal = transforms.Compose(
@@ -23,7 +23,7 @@ Normal = transforms.Compose(
 """이미지 정규화 구성"""
 
 
-maskKeyPoints = {
+maskKeyPoints: dict[maskKeyPointsType, tuple] = {
     "반팔": (0, 25),
     "긴팔": (25, 58),
     "반팔 아우터": (58, 89),
@@ -43,22 +43,22 @@ maskKeyPoints = {
 [예시 참고 사진](https://github.com/switchablenorms/DeepFashion2/blob/master/images/cls.jpg)
 """
 
-clothingType = Literal[
-    "반팔",
-    "긴팔",
-    "반팔 아우터",
-    "긴팔 아우터",
-    "조끼",
-    "슬링",
-    "반바지",
-    "긴바지",
-    "치마",
-    "반팔 원피스",
-    "긴팔 원피스",
-    "조끼 원피스",
-    "슬링 원피스",
-]
-"""maskKeyPoints의 Literal 타입"""
+
+TopMea: dict[TopMeaType, tuple] = {
+    "어깨너비": (6, 32),
+    "가슴단면": (15, 23),
+    "소매길이": (32, 31, 30, 29, 28),
+    "총장": (0, 19),
+}
+
+BottomMea: dict[BottomMeaType, tuple] = {
+    "허리단면": (0, 2),
+    "밑위": (1, 8),
+    "엉덩이단면": (3, 13),
+    "허벅지단면": (8, 13),
+    "총장": (0, 3, 4, 5),
+    "밑단단면": (5, 6),
+}
 
 
 class Utills:
@@ -89,7 +89,7 @@ class Utills:
         predOutput: Tensor,
         is_mask=True,
         flipTest=False,
-        clothType: clothingType = "반팔",
+        clothType: maskKeyPointsType = "반팔",
     ):
         """
         정규화된 이미지로 키포인트를 얻습니다
@@ -130,9 +130,7 @@ class Utills:
         image: MatLike,
         new_shape: Tuple[int, int],
         padding_color: Tuple[int, int, int] = (255, 255, 255),
-    ) -> tuple[
-        MatLike, dict[Literal["top", "bottom", "left", "right"], int]
-    ]:
+    ) -> tuple[MatLike, dict[Literal["top", "bottom", "left", "right"], int]]:
         """
         비율을 유지하여 이미지를 자릅니다.</br>
         이때 비율을 유지하기 위해 잘려진 부분은 `padding_color`로 채워 집니다
@@ -224,3 +222,16 @@ class Utills:
                     coords[n][p] += np.sign(diff) * 0.25
 
         return coords
+
+    def getMEApoints(
+        self, resultPoint: Tensor, type: Literal["긴팔", "긴바지"]
+    ) -> dict[Any, list[Tensor]]:
+        resultDict = {}
+        if type == "긴팔":
+            for key in TopMea.keys():
+                resultDict[key] = [resultPoint[index] for index in TopMea[key]]
+        elif type == "긴바지":
+            for key in BottomMea.keys():
+                resultDict[key] = [resultPoint[index] for index in BottomMea[key]]
+
+        return resultDict

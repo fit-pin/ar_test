@@ -1,5 +1,8 @@
-model/*.pth
-model/*.pt
+model/*
+!model/*.txt
+!model/Clothes-Card.pt
+
+!dataset/*.txt
 res/result.jpg
 dataset/*
 !dataset/*.txt

@@ -1,7 +1,9 @@
+from random import randint
 import threading
+from typing import Literal
 import matplotlib.pyplot as plt
 
-from torch import Tensor, load
+from torch import Tensor, cat, load, tensor
 from torch import device as Device
 from torch.nn import DataParallel
 from torch.cuda import is_available
@@ -11,16 +13,19 @@ from ultralytics import YOLO
 import configuration as con
 
 from HRnet import pose_hrnet
-from Utills import Utills
 
-TEST_IMG = "res/test3.jpg"
+from Utills import TopMeaType, Utills
+from custumTypes import BottomMeaType, maskKeyPointsType
+
+TEST_IMG = "res/test2.jpg"
 SAVE_IMG = "res/result.jpg"
+CLOTH_TYPE: maskKeyPointsType = "긴바지"
 
 KEYPOINT_MODEL_CKP = "model/pose_hrnet-w48_384x288-deepfashion2_mAP_0.7017.pth"
 CARDPOINT_MODEL_CKP = "model/Clothes-Card.pt"
 
 
-def getCardPoint(syncData: dict, img: cv2.typing.MatLike, utils: Utills):
+def getCardHeight(syncData: dict, img: cv2.typing.MatLike, utils: Utills):
     print("getCardPoint: 시작")
     model = YOLO(CARDPOINT_MODEL_CKP)
     print("getCardPoint: 모델 불러오기 성공")
@@ -28,6 +33,7 @@ def getCardPoint(syncData: dict, img: cv2.typing.MatLike, utils: Utills):
     print("getCardPoint: 예측 성공")
 
     if not len(result.obb.cls):  # type: ignore
+        return
         raise Exception("카드 감지 불가")
 
     # 예측확율 가장 좋은거 선택
@@ -38,11 +44,15 @@ def getCardPoint(syncData: dict, img: cv2.typing.MatLike, utils: Utills):
             max_value = float(card)
             max_index = i
 
-    points: Tensor = result.obb.xyxyxyxy[max_index]  # type: ignore
+    points: Tensor = result.obb.xywhr[max_index]  # type: ignore
+    w, h = points[2:4]
 
-    # list로 바꾸기
-    res = [[float(point[0]), float(point[1])] for point in points]
-    syncData["getCardPoint"] = res
+    # 제일 작은 값이 세로 이므로
+    height = h
+    if int(w) < int(h):
+        height = w
+
+    syncData["getCardHeight"] = height
 
 
 def getKeyPoints(syncData: dict, img: cv2.typing.MatLike, utils: Utills):
@@ -64,10 +74,6 @@ def getKeyPoints(syncData: dict, img: cv2.typing.MatLike, utils: Utills):
 
     print(f"getKeyPoints: 이미지에 적용된 패딩: {padding}")
 
-    # 리사이징된 이미지 보기
-    # plt.imshow(reSizeImage)
-    # plt.show()
-
     # 이미지 정규화 하기
     normaImg = utils.getNormalizimage(reSizeImage)
 
@@ -76,7 +82,7 @@ def getKeyPoints(syncData: dict, img: cv2.typing.MatLike, utils: Utills):
     res = model(normaImg)
 
     # 키포인트 추려내기
-    keyPoints = utils.getKeyPointsResult(res, clothType="긴팔")
+    keyPoints = utils.getKeyPointsResult(res, clothType=CLOTH_TYPE)
     print("getKeyPoints: 예측 성공")
 
     """시각화 부분"""
@@ -86,8 +92,7 @@ def getKeyPoints(syncData: dict, img: cv2.typing.MatLike, utils: Utills):
     scaling_factor_x = con.IMG_SIZE[1] / con.HEATMAP_SIZE[0]
     scaling_factor_y = con.IMG_SIZE[0] / con.HEATMAP_SIZE[1]
 
-    # 멀티프로세스에서는 tenor 지원 안함
-    result_points: list[list[int]] = []
+    result_points = Tensor()
     for points in keyPoints[0]:
         # 288x384 에서 표시되야 하는 점
         joint_x = pointPadding + points[0] * scaling_factor_x
@@ -100,9 +105,34 @@ def getKeyPoints(syncData: dict, img: cv2.typing.MatLike, utils: Utills):
             # 최종적으로 패딩 값에 따른 점 위치 수정
             final_x = joint_x * ratio_x - (ratio_x * padding["left"])
             final_y = joint_y * ratio_y - (ratio_y * padding["top"])
-            result_points.append([final_x, final_y])
+
+            # 2차원으로 변경
+            temp = tensor([final_x, final_y]).unsqueeze(0)
+            result_points = cat((result_points, temp))
 
     syncData["getKeyPoints"] = result_points
+
+
+# 키포인트 시각화용
+def refKeyPoint(img: cv2.typing.MatLike, resultPoint: Tensor):
+    for i, point in enumerate(resultPoint):
+        R = randint(0, 255)
+        G = randint(0, 255)
+        B = randint(0, 255)
+        cv2.circle(img, (int(point[0]), int(point[1])), 2, [B, G, R], 10)
+        cv2.putText(
+            img,
+            str(i),
+            (int(point[0]), int(point[1] - 20)),
+            cv2.FONT_HERSHEY_PLAIN,
+            3,
+            (B, G, R),
+            5,
+        )
+
+    cv2.imwrite("res/refTest.jpg", img)
+    plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    plt.show()
 
 
 def main():
@@ -117,30 +147,29 @@ def main():
     img = cv2.imread(TEST_IMG, cv2.IMREAD_COLOR)
 
     # 멀티쓰레딩 결과 저장용
-    syncData: dict = dict()
-    
-    # getKeyPoints 쓰레드 생성
-    CardPointThread = threading.Thread(target=getCardPoint, args=(syncData, img, utils))
+    syncData: dict[Literal["getCardHeight"] | Literal["getKeyPoints"], Tensor] = dict()
+
+    # getCardHeight 쓰레드 생성
+    CardHeightThread = threading.Thread(
+        target=getCardHeight, args=(syncData, img, utils)
+    )
     # getKeyPoints 쓰레드 생성
     keyPointThread = threading.Thread(target=getKeyPoints, args=(syncData, img, utils))
 
     # 쓰레드 시작
-    CardPointThread.start()
+    CardHeightThread.start()
     keyPointThread.start()
 
     # 완료대기
-    CardPointThread.join()
+    CardHeightThread.join()
     keyPointThread.join()
-    
-    print(syncData)
 
+    ch_point = syncData["getKeyPoints"]
+    print(f"감지된 점: {len(ch_point)}개")
 
-    # cv2.circle(img, (int(ch_keyPoints[:][0]), int(ch_keyPoints[:][1])), 2, [0, 255, 0], 15)
-
-    # cv2.imwrite(SAVE_IMG, img)
-    # plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-    # plt.show()
-
+    # 긴팔: TopMeaType
+    # 긴바지: BottomMeaType
+    MEAData: dict[TopMeaType, list[Tensor]] = utils.getMEApoints(ch_point, CLOTH_TYPE)  # type: ignore
 
 if __name__ == "__main__":
     main()
