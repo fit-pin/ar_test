@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 
 from torch import Tensor, cat, load, tensor
 from torch import device as Device
+import torch
 from torch.nn import DataParallel
 from torch.cuda import is_available
 
@@ -143,22 +144,16 @@ def viewSample(
         pixelSize = utils.distance(MEAData[idx])
         realDist_Dict[idx] = utils.findRealSize(con.CARD_SIZE[1], card_px, pixelSize)
 
+    # 텍스트 처리를 위한 각 파트에 중점 좌표 저장용 텐서
+    centerPose = Tensor()
     for i, part in enumerate(MEAData.keys()):
         points = MEAData[part]
 
-        # TODO: 텍스트 겹치는 문제 해결
+        # 각 파트별 중점 좌표를 2차원 텐서로 저장하는 코드
         center = MEAData[part].mean(dim=0)
-        strSize = f"{round(realDist_Dict[part], 2)}cm"
+        centerPose = torch.cat((centerPose, center.unsqueeze(0)))
 
-        cv2.putText(
-            img,
-            strSize,
-            (int(center[0]), int(center[1]) - 20),
-            cv2.FONT_HERSHEY_PLAIN,
-            3,
-            con.COLOR_MAP[i],
-            5,
-        )
+        # 점과 라인 찍기
         for k, point in enumerate(points):
             cv2.circle(img, (int(point[0]), int(point[1])), 2, con.COLOR_MAP[i], 10)
             if k < len(points) - 1:
@@ -166,6 +161,45 @@ def viewSample(
                 pt2 = (int(points[k + 1][0]), int(points[k + 1][1]))
                 cv2.line(img, pt1, pt2, con.COLOR_MAP[i], 5)
 
+    # 각각의 중점 좌표가 똑같은 경우 텍스트 겹침 현상을 해결하고자 만든 반복문
+    # 자신의 좌표가 centerPose에 저장된 값과 +- 100 이하면 +100 해주는 코드
+    for i, part in enumerate(MEAData.keys()):
+        strSize = f"{round(realDist_Dict[part], 2)}cm"
+
+        # i값의 중점 x 좌표를 모든 좌표와 뺄샘 연산을 진행
+        x_per = torch.abs(centerPose - centerPose[i][0])
+        # i값의 중점 y 좌표를 모든 좌표와 뺄샘 연산을 진행
+        y_per = torch.abs(centerPose - centerPose[i][1])
+
+        # 모든 x, y 에 대해 100 이하인지를 저장하는 bool 마스크를 생성
+        mask_x = x_per < 100
+        mask_y = y_per < 100
+
+        # mask_x와 mask_y 에 대한 or 연산 진행 (x_per < 100 or y_per < 100) 이게 tenor 에서 안됨
+        mask = mask_x.logical_or(mask_y)
+
+        # 자기 자신을 True 로 처리하지 못하게 처리
+        mask[i] = False
+
+        # 모든 x 좌표 또는 y 좌표에 True 가 있는지 판단
+        is_Overlap = mask.any(dim=0)
+
+        # 이게 or 로 두면 같은 x 좌표에 다른 y 값을 가진경우라도 통과할 수 있다
+        if is_Overlap[0] and is_Overlap[1]:
+            centerPose[i] += 100
+
+        cul_points = centerPose[i]
+
+        cv2.putText(
+            img,
+            strSize,
+            (int(cul_points[0] + 30), int(cul_points[1]) - 30),
+            cv2.FONT_HERSHEY_PLAIN,
+            5,
+            con.COLOR_MAP[i],
+            5,
+        )
+    cv2.imwrite(SAVE_IMG, img)
     plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
     plt.show()
 
@@ -201,7 +235,6 @@ def main():
 
     ch_point = syncData["getKeyPoints"]
     card_px = float(syncData["getCardHeight"])
-
     print(f"감지된 점: {len(ch_point)}개")
 
     # 긴팔: TopMeaType
@@ -218,8 +251,8 @@ def main():
             con.CARD_SIZE[1], card_px, pixelDist_Dict[idx]
         )
 
+    print(realDist_Dict)
     viewSample(img, MEAData, card_px, utils)
-    # print(realDist_Dict)
 
 
 if __name__ == "__main__":

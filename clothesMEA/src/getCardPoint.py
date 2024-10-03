@@ -21,17 +21,35 @@ def main():
         if max_value < float(card):
             max_value = float(card)
             max_index = i
-            
-    points: Tensor = result.obb.xyxyxyxy[max_index]
 
+    points: Tensor = result.obb.xyxyxyxy[max_index]
     cv_img = cv2.imread(IMG)
-    
-    [cv2.circle(cv_img, (int(point[0]), int(point[1])), 2, [0, 255, 0], 10) for point in points]
+    [
+        cv2.circle(cv_img, (int(point[0]), int(point[1])), 2, [0, 255, 0], 10)
+        for point in points
+    ]
+
+    linePoint: Tensor = result.obb.xywhr[max_index]
+    w, h = linePoint[2:4]
+
+    # 제일 작은 값이 세로 이므로
+    height = h
+    if int(w) < int(h):
+        height = w
+
+    print(f"높이: {int(height)}px")
+    cv2.line(
+        cv_img,
+        (int(points[1][0]), int(points[1][1])),
+        (int(points[1][0]), int(points[1][1] + height)),
+        (255, 0, 0),
+        5,
+    )
 
     plt_color = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
     plt.imshow(plt_color)
     plt.show()
-    
-    
+
+
 if __name__ == "__main__":
     main()
