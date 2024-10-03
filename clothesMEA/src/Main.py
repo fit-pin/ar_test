@@ -3,9 +3,8 @@ import threading
 from typing import Any, Literal
 import matplotlib.pyplot as plt
 
-from torch import Tensor, cat, load, tensor
+from torch import Tensor, cat, load, tensor, abs as torch_abs, cat
 from torch import device as Device
-import torch
 from torch.nn import DataParallel
 from torch.cuda import is_available
 
@@ -151,7 +150,7 @@ def viewSample(
 
         # 각 파트별 중점 좌표를 2차원 텐서로 저장하는 코드
         center = MEAData[part].mean(dim=0)
-        centerPose = torch.cat((centerPose, center.unsqueeze(0)))
+        centerPose = cat((centerPose, center.unsqueeze(0)))
 
         # 점과 라인 찍기
         for k, point in enumerate(points):
@@ -167,9 +166,9 @@ def viewSample(
         strSize = f"{round(realDist_Dict[part], 2)}cm"
 
         # i값의 중점 x 좌표를 모든 좌표와 뺄샘 연산을 진행
-        x_per = torch.abs(centerPose - centerPose[i][0])
+        x_per = torch_abs(centerPose - centerPose[i][0])
         # i값의 중점 y 좌표를 모든 좌표와 뺄샘 연산을 진행
-        y_per = torch.abs(centerPose - centerPose[i][1])
+        y_per = torch_abs(centerPose - centerPose[i][1])
 
         # 모든 x, y 에 대해 100 이하인지를 저장하는 bool 마스크를 생성
         mask_x = x_per < 100

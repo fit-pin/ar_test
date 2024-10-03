@@ -2,10 +2,7 @@ import math
 import numpy as np
 import torchvision.transforms as transforms
 from custumTypes import BottomMeaType, TopMeaType, maskKeyPointsType
-from torch import device as Device, stack
-from torch import Tensor
-from torch import tensor
-from torch import zeros
+from torch import device as Device, stack, Tensor, tensor, zeros
 
 from cv2.typing import MatLike
 from cv2 import resize, copyMakeBorder, BORDER_CONSTANT
