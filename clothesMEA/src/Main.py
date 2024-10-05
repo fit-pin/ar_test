@@ -17,7 +17,7 @@ from HRnet import pose_hrnet
 from Utills import Utills
 from custumTypes import BottomMeaType, TopMeaType, maskKeyPointsType
 
-TEST_IMG = "res/test3.jpg"
+TEST_IMG = "res/20241003_141405.jpg"
 SAVE_IMG = "res/result.jpg"
 CLOTH_TYPE: maskKeyPointsType = "긴팔"
 
@@ -239,6 +239,8 @@ def main():
     # 긴팔: TopMeaType
     # 긴바지: BottomMeaType
     MEAData: dict[TopMeaType, Tensor] = utils.getMEApoints(ch_point, CLOTH_TYPE)  # type: ignore
+    
+    # refKeyPoint(img, ch_point)
 
     pixelDist_Dict: dict[Any, float] = {}
     for idx in MEAData.keys():
