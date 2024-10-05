@@ -17,9 +17,9 @@ from HRnet import pose_hrnet
 from Utills import Utills
 from custumTypes import BottomMeaType, TopMeaType, maskKeyPointsType
 
-TEST_IMG = "res/20241003_141405.jpg"
+TEST_IMG = "res/test4.jpg"
 SAVE_IMG = "res/result.jpg"
-CLOTH_TYPE: maskKeyPointsType = "긴팔"
+CLOTH_TYPE: maskKeyPointsType = "긴바지"
 
 KEYPOINT_MODEL_CKP = "model/pose_hrnet-w48_384x288-deepfashion2_mAP_0.7017.pth"
 CARDPOINT_MODEL_CKP = "model/Clothes-Card.pt"
@@ -112,7 +112,7 @@ def getKeyPoints(syncData: dict, img: cv2.typing.MatLike, utils: Utills):
     syncData["getKeyPoints"] = result_points
 
 
-# 싩측크기 참고용 시각화 코드
+# 실측크기 참고용 시각화 코드
 def refKeyPoint(img: cv2.typing.MatLike, resultPoint: Tensor):
     for i, point in enumerate(resultPoint):
         R = randint(0, 255)
@@ -154,15 +154,16 @@ def viewSample(
 
         # 점과 라인 찍기
         for k, point in enumerate(points):
-            cv2.circle(img, (int(point[0]), int(point[1])), 2, con.COLOR_MAP[i], 10)
+            cv2.circle(img, (int(point[0]), int(point[1])), 2, con.COLOR_MAP[i], 20)
             if k < len(points) - 1:
                 pt1 = (int(points[k][0]), int(points[k][1]))
                 pt2 = (int(points[k + 1][0]), int(points[k + 1][1]))
-                cv2.line(img, pt1, pt2, con.COLOR_MAP[i], 5)
+                cv2.line(img, pt1, pt2, con.COLOR_MAP[i], 10)
 
     # 각각의 중점 좌표가 똑같은 경우 텍스트 겹침 현상을 해결하고자 만든 반복문
     # 자신의 좌표가 centerPose에 저장된 값과 +- 100 이하면 +100 해주는 코드
     for i, part in enumerate(MEAData.keys()):
+        print(centerPose[i])
         strSize = f"{round(realDist_Dict[part], 2)}cm"
 
         # i값의 중점 x 좌표를 모든 좌표와 뺄샘 연산을 진행
@@ -194,7 +195,7 @@ def viewSample(
             strSize,
             (int(cul_points[0] + 30), int(cul_points[1]) - 30),
             cv2.FONT_HERSHEY_PLAIN,
-            5,
+            7,
             con.COLOR_MAP[i],
             5,
         )
