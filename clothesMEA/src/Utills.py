@@ -117,8 +117,50 @@ class Utills:
             channel_mask[0].scatter_(0, index, 1)
 
             predOutput = predOutput * channel_mask.unsqueeze(3)
+        
+        heatmap_height =con.HEATMAP_SIZE[0]
+        heatmap_width = con.HEATMAP_SIZE[1]
 
-        preds_local = self.__get_final_preds(predOutput.detach().cpu().numpy())
+        batch_heatmaps = predOutput.detach().cpu().numpy()
+        
+        assert isinstance(
+            batch_heatmaps, np.ndarray
+        ), "batch_heatmaps should be numpy.ndarray"
+        assert batch_heatmaps.ndim == 4, "batch_images should be 4-ndim"
+
+        batch_size = batch_heatmaps.shape[0]
+        num_joints = batch_heatmaps.shape[1]
+        width = batch_heatmaps.shape[3]
+        heatmaps_reshaped = batch_heatmaps.reshape((batch_size, num_joints, -1))
+        idx = np.argmax(heatmaps_reshaped, 2)
+        maxvals = np.amax(heatmaps_reshaped, 2)
+
+        maxvals = maxvals.reshape((batch_size, num_joints, 1))
+        idx = idx.reshape((batch_size, num_joints, 1))
+
+        preds_local = np.tile(idx, (1, 1, 2)).astype(np.float32)
+
+        preds_local[:, :, 0] = (preds_local[:, :, 0]) % width
+        preds_local[:, :, 1] = np.floor((preds_local[:, :, 1]) / width)
+
+        pred_mask = np.tile(np.greater(maxvals, 0.0), (1, 1, 2))
+        pred_mask = pred_mask.astype(np.float32)
+
+        preds_local *= pred_mask
+
+        for n in range(preds_local.shape[0]):
+            for p in range(preds_local.shape[1]):
+                hm = batch_heatmaps[n][p]
+                px = int(math.floor(preds_local[n][p][0] + 0.5))
+                py = int(math.floor(preds_local[n][p][1] + 0.5))
+                if 1 < px < heatmap_width - 1 and 1 < py < heatmap_height - 1:
+                    diff = np.array(
+                        [
+                            hm[py][px + 1] - hm[py][px - 1],
+                            hm[py + 1][px] - hm[py - 1][px],
+                        ]
+                    )
+                    preds_local[n][p] += np.sign(diff) * 0.25
 
         return preds_local
 
@@ -167,58 +209,6 @@ class Utills:
         )
 
         return image, {"top": top, "bottom": bottom, "left": left, "right": right}
-
-    # 이 함수는 원본에서 불러온 것
-    def __get_max_preds(self, batch_heatmaps):
-        assert isinstance(
-            batch_heatmaps, np.ndarray
-        ), "batch_heatmaps should be numpy.ndarray"
-        assert batch_heatmaps.ndim == 4, "batch_images should be 4-ndim"
-
-        batch_size = batch_heatmaps.shape[0]
-        num_joints = batch_heatmaps.shape[1]
-        width = batch_heatmaps.shape[3]
-        heatmaps_reshaped = batch_heatmaps.reshape((batch_size, num_joints, -1))
-        idx = np.argmax(heatmaps_reshaped, 2)
-        maxvals = np.amax(heatmaps_reshaped, 2)
-
-        maxvals = maxvals.reshape((batch_size, num_joints, 1))
-        idx = idx.reshape((batch_size, num_joints, 1))
-
-        preds = np.tile(idx, (1, 1, 2)).astype(np.float32)
-
-        preds[:, :, 0] = (preds[:, :, 0]) % width
-        preds[:, :, 1] = np.floor((preds[:, :, 1]) / width)
-
-        pred_mask = np.tile(np.greater(maxvals, 0.0), (1, 1, 2))
-        pred_mask = pred_mask.astype(np.float32)
-
-        preds *= pred_mask
-        return preds
-
-    # 이 함수는 원본에서 불러온 것
-    def __get_final_preds(self, output):
-        heatmap_height = con.HEATMAP_SIZE[0]
-        heatmap_width = con.HEATMAP_SIZE[1]
-
-        batch_heatmaps = output
-        coords = self.__get_max_preds(batch_heatmaps)
-
-        for n in range(coords.shape[0]):
-            for p in range(coords.shape[1]):
-                hm = batch_heatmaps[n][p]
-                px = int(math.floor(coords[n][p][0] + 0.5))
-                py = int(math.floor(coords[n][p][1] + 0.5))
-                if 1 < px < heatmap_width - 1 and 1 < py < heatmap_height - 1:
-                    diff = np.array(
-                        [
-                            hm[py][px + 1] - hm[py][px - 1],
-                            hm[py + 1][px] - hm[py - 1][px],
-                        ]
-                    )
-                    coords[n][p] += np.sign(diff) * 0.25
-
-        return coords
 
     def getMEApoints(
         self, resultPoint: Tensor, type: Literal["긴팔", "긴바지"]
