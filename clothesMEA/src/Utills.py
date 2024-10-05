@@ -267,3 +267,24 @@ class Utills:
 
         cm_per_px = refSize / refPx
         return findPx * cm_per_px
+
+    def limitTextPosition(self ,img: MatLike, points: Tensor, x_max: int, y_min: int):
+        """
+        Tensor에 최소 텍스트 표시 영역을 설정합니다.</br>
+        영역을 넘어가는 부분은 `x_max`, `y_min` 값으로 대체됩니다
+
+        Args:
+            img (cv2.typing.MatLike): 원본이비지
+            points (Tensor): 현재 표시 영역
+            x_max (int): 최대 표시되는 x좌표
+            y_min (int): 최소 표시되는 y좌표
+        """
+        x = img.shape[1]
+
+        x_pad = x < (x_max + points[0])
+        y_pad = y_min > points[1]
+
+        if x_pad:
+            points[0] = x - x_max
+        if y_pad:
+            points[1] = y_min

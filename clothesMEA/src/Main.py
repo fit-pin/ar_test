@@ -163,8 +163,10 @@ def viewSample(
     # 각각의 중점 좌표가 똑같은 경우 텍스트 겹침 현상을 해결하고자 만든 반복문
     # 자신의 좌표가 centerPose에 저장된 값과 +- 100 이하면 +100 해주는 코드
     for i, part in enumerate(MEAData.keys()):
-        print(centerPose[i])
         strSize = f"{round(realDist_Dict[part], 2)}cm"
+
+        # 텍스트 영역 제한하기
+        utils.limitTextPosition(img, centerPose[i], 100, 150)
 
         # i값의 중점 x 좌표를 모든 좌표와 뺄샘 연산을 진행
         x_per = torch_abs(centerPose - centerPose[i][0])
@@ -240,7 +242,7 @@ def main():
     # 긴팔: TopMeaType
     # 긴바지: BottomMeaType
     MEAData: dict[TopMeaType, Tensor] = utils.getMEApoints(ch_point, CLOTH_TYPE)  # type: ignore
-    
+
     # refKeyPoint(img, ch_point)
 
     pixelDist_Dict: dict[Any, float] = {}
